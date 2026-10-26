@@ -49,15 +49,27 @@ def prompt_cards():
     return cards
 
 
-def open_codex():
+def applescript_string(text):
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def open_codex(prompt=""):
+    """Open Codex in the workspace, starting with `prompt` when one is given."""
     state = check_setup.find_codex()
     if not state["found"]:
         return False, "Codex is not installed yet. Install the Codex app from OpenAI, then try again."
     if platform.system() != "Darwin":
         return False, f"Open Codex yourself in this folder: {ROOT}"
+    prompt = prompt.strip()
     if state["kind"] == "app":
-        return run(["open", "-a", state["path"], str(ROOT)])
-    script = f'tell application "Terminal" to do script "cd {shlex.quote(str(ROOT))} && codex"'
+        if prompt:
+            subprocess.run(["pbcopy"], input=prompt, text=True)
+        ok, out = run(["open", "-a", state["path"], str(ROOT)])
+        return ok, out or ("Codex is opening. Your request is copied: paste it with Cmd+V." if prompt else "Codex is opening.")
+    command = f"cd {shlex.quote(str(ROOT))} && codex"
+    if prompt:
+        command += " " + shlex.quote(prompt)
+    script = f'tell application "Terminal" to do script {applescript_string(command)}'
     ok, out = run(["osascript", "-e", script, "-e", 'tell application "Terminal" to activate'])
     return ok, out or "Opened Codex in Terminal."
 
@@ -148,7 +160,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/schema":
                 return self.send(200, {"ok": True, "message": "\n".join(fetch_schema.fetch_all())})
             if self.path == "/api/open-codex":
-                ok, out = open_codex()
+                ok, out = open_codex(str(body.get("prompt") or ""))
                 return self.send(200, {"ok": ok, "message": out or "Codex is opening."})
             if self.path == "/api/connect-mcp":
                 ok, out = connect_codex_mcp()

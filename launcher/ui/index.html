@@ -60,7 +60,20 @@
   </div>
   <div id="open-msg" class="msg"></div>
 
-  <h2>Try one of these in Codex</h2>
+  <h2>What do you want to do?</h2>
+  <div class="step" style="grid-template-columns: 1fr">
+    <div class="intents" style="display:flex; gap:8px; flex-wrap:wrap">
+      <button data-intent="Answer this data question: ">Ask a data question</button>
+      <button data-intent="Make a Metabase question showing ... and save it in the Staff collection.">Make a saved question</button>
+      <button data-intent="Build a Metabase dashboard called &quot;...&quot; with ... and a date filter.">Build a dashboard</button>
+    </div>
+    <textarea id="intent-text" rows="3" placeholder="Pick one above or type what you need, in English or Persian"
+      style="font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); resize:vertical; width:100%"></textarea>
+    <div><button id="intent-open" class="primary">Open Codex with this</button></div>
+    <div id="intent-msg" class="msg"></div>
+  </div>
+
+  <h2>Or start from an example</h2>
   <div id="cards" class="cards"></div>
 
   <h2>Settings</h2>
@@ -170,12 +183,27 @@ async function loadCards() {
   const box = document.getElementById("cards");
   const {cards} = await api("/api/prompts");
   for (const c of cards) {
-    const btn = el("button", {}, "Copy");
-    btn.onclick = async () => { await navigator.clipboard.writeText(c.text); btn.textContent = "Copied"; setTimeout(() => btn.textContent = "Copy", 1500); };
+    const btn = el("button", {}, "Use");
+    btn.onclick = () => { setIntent(c.text); };
     box.append(el("div", {class: "card"}, el("div", {}, el("small", {}, c.section), c.text), btn));
   }
 }
 
+function setIntent(text) {
+  const box = document.getElementById("intent-text");
+  box.value = text;
+  box.scrollIntoView({behavior: "smooth", block: "center"});
+  const dots = text.indexOf("...");
+  box.focus();
+  if (dots >= 0) box.setSelectionRange(dots, dots + 3); else box.setSelectionRange(text.length, text.length);
+}
+for (const b of document.querySelectorAll("[data-intent]")) b.onclick = () => setIntent(b.dataset.intent);
+document.getElementById("intent-open").onclick = (e) => {
+  const text = document.getElementById("intent-text").value.trim();
+  const msg = document.getElementById("intent-msg");
+  if (!text) return showMsg(msg, {ok: false, message: "Pick an option or type what you need first."});
+  action(e.target, "/api/open-codex", msg, {prompt: text});
+};
 document.getElementById("recheck").onclick = load;
 document.getElementById("open").onclick = (e) => action(e.target, "/api/open-codex", document.getElementById("open-msg"));
 document.getElementById("vpn").onchange = async (e) => {
