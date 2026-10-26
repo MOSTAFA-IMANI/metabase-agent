@@ -1,0 +1,5 @@
+.env
+.workspace-state.json
+schema/
+__pycache__/
+.DS_Store

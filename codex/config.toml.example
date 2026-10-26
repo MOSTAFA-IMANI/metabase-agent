@@ -1,0 +1,10 @@
+# Add this to ~/.codex/config.toml, only when tools/check_setup.py reports MCP mode
+# (Metabase 62 or newer). Then sign in once with your own Metabase account:
+#
+#   codex mcp login metabase
+#
+# Verify the path on first use: newer Metabase serves /api/metabase-mcp, some
+# 60.x builds serve /api/mcp. check_setup.py records the version it found.
+
+[mcp_servers.metabase]
+url = "https://mt.soupop.ir/api/metabase-mcp"
