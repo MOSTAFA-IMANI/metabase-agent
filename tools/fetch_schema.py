@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "schema"
 
 
-def main():
+def fetch_all():
+    """Fetch every configured database and return one summary line per file."""
+    lines = []
     config = json.loads((ROOT / "workspace.config.json").read_text())
     client = MetabaseClient(base_url=config["metabase_url"])
     OUT.mkdir(exist_ok=True)
@@ -35,7 +37,13 @@ def main():
                     "fetched_at": datetime.now(timezone.utc).isoformat(), "tables": tables}
         path = OUT / f"{name}.json"
         path.write_text(json.dumps(snapshot, indent=1, ensure_ascii=False) + "\n")
-        print(f"Saved {len(tables)} tables to {path.relative_to(ROOT)}")
+        lines.append(f"Saved {len(tables)} tables to {path.relative_to(ROOT)}")
+    return lines
+
+
+def main():
+    for line in fetch_all():
+        print(line)
 
 
 if __name__ == "__main__":

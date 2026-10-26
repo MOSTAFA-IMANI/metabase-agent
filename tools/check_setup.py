@@ -58,28 +58,7 @@ def find_codex():
     return {"found": False}
 
 
-def run_checks(config):
-    base = config["metabase_url"].rstrip("/")
-    results = []
-    state = {"checked_at": datetime.now(timezone.utc).isoformat(), "metabase_url": base,
-             "staff_collection_id": config.get("staff_collection_id")}
-
-    def add(name, ok, detail):
-        results.append({"check": name, "ok": ok, "detail": detail})
-        return ok
-
-    # 1. VPN, only when the config says Metabase sits behind it.
-    if config.get("requires_vpn"):
-        status, _ = get(config.get("vpn_probe_url") or base + "/api/health")
-        add("VPN", status is not None, "connected" if status else "can't reach the internal network; turn on the org VPN")
-    else:
-        add("VPN", None, "not required (requires_vpn is false)")
-
-    # 2. Metabase reachable.
-    status, body = get(base + "/api/health")
-    if not add("Metabase reachable", status == 200, f"{base} answered" if status == 200 else f"no answer from {base}"):
-        return results, state
-
+def check_metabase(config, base, state, add):
     # 3. Version decides MCP or API mode.
     _, props = get(base + "/api/session/properties")
     tag = (props or {}).get("version", {}).get("tag") if isinstance(props, dict) else None
@@ -100,9 +79,32 @@ def run_checks(config):
         if status == 200 and isinstance(user, dict):
             add("Metabase sign-in", True, f"signed in as {user.get('email', 'unknown')}")
         else:
-            add("Metabase sign-in", False, "run: python3 tools/metabase_agent.py login")
+            add("Metabase sign-in", False, "not signed in; use the form below or run: python3 tools/metabase_agent.py login")
     else:
         add("Metabase sign-in", None, "sign in once with: codex mcp login metabase")
+
+
+def run_checks(config):
+    base = config["metabase_url"].rstrip("/")
+    results = []
+    state = {"checked_at": datetime.now(timezone.utc).isoformat(), "metabase_url": base,
+             "staff_collection_id": config.get("staff_collection_id")}
+
+    def add(name, ok, detail):
+        results.append({"check": name, "ok": ok, "detail": detail})
+        return ok
+
+    # 1. VPN, only when the config says Metabase sits behind it.
+    if config.get("requires_vpn"):
+        status, _ = get(config.get("vpn_probe_url") or base + "/api/health")
+        add("VPN", status is not None, "connected" if status else "can't reach the internal network; turn on the org VPN")
+    else:
+        add("VPN", None, "not required (requires_vpn is false)")
+
+    # 2. Metabase reachable. Without it, skip the Metabase checks but still check Codex.
+    status, _ = get(base + "/api/health")
+    if add("Metabase reachable", status == 200, f"{base} answered" if status == 200 else f"no answer from {base}"):
+        check_metabase(config, base, state, add)
 
     # 5. Codex.
     codex = find_codex()
@@ -117,8 +119,22 @@ def run_checks(config):
         add("Node.js", None, f"found at {node}" if node else "not found; only needed to install the Codex CLI with npm")
 
     if state.get("staff_collection_id") is None:
-        add("Staff collection", False, "set staff_collection_id in workspace.config.json")
+        add("Staff collection", False, "not set; add it in Settings or in workspace.config.json")
     return results, state
+
+
+def load_config():
+    config = json.loads(CONFIG_FILE.read_text())
+    if os.environ.get("SOUPOP_REQUIRES_VPN") in ("0", "1"):
+        config["requires_vpn"] = os.environ["SOUPOP_REQUIRES_VPN"] == "1"
+    return config
+
+
+def check_and_save():
+    results, state = run_checks(load_config())
+    state["checks"] = results
+    STATE_FILE.write_text(json.dumps(state, indent=2) + "\n")
+    return state
 
 
 def main():
@@ -126,12 +142,8 @@ def main():
     parser.add_argument("--json", action="store_true", help="Print machine-readable results.")
     args = parser.parse_args()
 
-    config = json.loads(CONFIG_FILE.read_text())
-    if os.environ.get("SOUPOP_REQUIRES_VPN") in ("0", "1"):
-        config["requires_vpn"] = os.environ["SOUPOP_REQUIRES_VPN"] == "1"
-    results, state = run_checks(config)
-    state["checks"] = results
-    STATE_FILE.write_text(json.dumps(state, indent=2) + "\n")
+    state = check_and_save()
+    results = state["checks"]
 
     if args.json:
         print(json.dumps(state, indent=2))

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soupop Data Launcher</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1d2330; --quiet: #5d6675; --line: #e3e6eb;
+    --accent: #2f6fdf; --good: #1f8a4c; --bad: #c2412d; --skip: #8a93a3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171c; --card: #1d2128; --ink: #e8ebf0; --quiet: #9aa3b2; --line: #2c323c;
+            --accent: #6d9cf0; --good: #4cc27e; --bad: #f0806c; --skip: #6c7584; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--quiet); margin: 0 0 24px; }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+          padding: 14px 16px; margin-bottom: 10px; display: grid;
+          grid-template-columns: 28px 1fr auto; gap: 4px 12px; align-items: start; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+         font-size: 12px; font-weight: 700; color: #fff; background: var(--skip); margin-top: 1px; }
+  .dot.ok { background: var(--good); } .dot.bad { background: var(--bad); }
+  .title { font-weight: 600; }
+  .detail { color: var(--quiet); font-size: 14px; grid-column: 2 / 4; word-break: break-word; }
+  .extra { grid-column: 2 / 4; margin-top: 8px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+           border-radius: 8px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .6; cursor: wait; }
+  input { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+          background: var(--bg); color: var(--ink); min-width: 0; }
+  form.row { display: flex; gap: 8px; flex-wrap: wrap; }
+  form.row input { flex: 1 1 160px; }
+  .msg { font-size: 13px; margin-top: 6px; white-space: pre-wrap; }
+  .msg.ok { color: var(--good); } .msg.bad { color: var(--bad); }
+  h2 { font-size: 17px; margin: 28px 0 10px; }
+  .cards { display: grid; gap: 8px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+          display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+  .card small { color: var(--quiet); display: block; }
+  label.toggle { display: flex; gap: 8px; align-items: center; color: var(--quiet); font-size: 14px; }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+  @media (max-width: 520px) { .step { grid-template-columns: 28px 1fr; } .step > button { grid-column: 2; justify-self: start; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Soupop Data Launcher</h1>
+  <p class="sub">Get ready to ask Codex about Soupop data. Fix anything red, then open Codex.</p>
+
+  <div id="steps"></div>
+  <div style="display:flex; gap:8px; margin-top:12px">
+    <button id="recheck">Check again</button>
+    <button id="open" class="primary">Open Codex</button>
+  </div>
+  <div id="open-msg" class="msg"></div>
+
+  <h2>Try one of these in Codex</h2>
+  <div id="cards" class="cards"></div>
+
+  <h2>Settings</h2>
+  <div class="step" style="grid-template-columns: 1fr">
+    <label class="toggle"><input type="checkbox" id="vpn"> Metabase needs the org VPN</label>
+    <form class="row" id="collection-form">
+      <input id="collection" inputmode="numeric" placeholder="Staff collection id (number in its Metabase link)">
+      <button>Save</button>
+    </form>
+    <div id="settings-msg" class="msg"></div>
+  </div>
+</main>
+<script>
+const TOKEN = "__LAUNCHER_TOKEN__";
+const api = async (path, body) => {
+  const res = await fetch(path, {
+    method: body === undefined ? "GET" : "POST",
+    headers: {"X-Launcher-Token": TOKEN, "Content-Type": "application/json"},
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return res.json();
+};
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === "class" ? n.className = v : n.setAttribute(k, v);
+  for (const kid of kids) n.append(kid);
+  return n;
+};
+const showMsg = (node, r) => { node.textContent = r.message || ""; node.className = "msg " + (r.ok ? "ok" : "bad"); };
+
+async function action(button, path, msgNode, body) {
+  button.disabled = true;
+  try { showMsg(msgNode, await api(path, body ?? {})); }
+  catch (e) { showMsg(msgNode, {ok: false, message: "The launcher stopped. Start it again."}); }
+  button.disabled = false;
+}
+
+const STEP_TITLES = {
+  "VPN": "Network / VPN",
+  "Metabase reachable": "Reach Metabase",
+  "Metabase version": "Metabase version",
+  "Metabase sign-in": "Sign in to Metabase",
+  "Codex installed": "Codex installed",
+  "Node.js": "Node.js (optional)",
+  "Staff collection": "Staff collection",
+};
+
+function stepNode(check, state) {
+  const mark = check.ok === true ? "ok" : check.ok === false ? "bad" : "";
+  const node = el("div", {class: "step"},
+    el("div", {class: "dot " + mark}, check.ok === true ? "✓" : check.ok === false ? "!" : "–"),
+    el("div", {class: "title"}, STEP_TITLES[check.check] || check.check),
+    el("span"),
+    el("div", {class: "detail"}, check.detail));
+  const extra = el("div", {class: "extra"});
+  const msg = el("div", {class: "msg"});
+
+  if (check.check === "Metabase sign-in" && check.ok === false) {
+    const user = el("input", {placeholder: "Metabase email", autocomplete: "username"});
+    const pass = el("input", {type: "password", placeholder: "Password", autocomplete: "current-password"});
+    const btn = el("button", {class: "primary"}, "Sign in");
+    const form = el("form", {class: "row"}, user, pass, btn);
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      await action(btn, "/api/login", msg, {username: user.value, password: pass.value});
+      pass.value = "";
+      if (msg.classList.contains("ok")) load();
+    };
+    extra.append(form, msg);
+  }
+  if (check.check === "Metabase sign-in" && state.mode === "mcp") {
+    extra.append(el("div", {class: "detail"}, "Codex signs in for you the first time you ask about data."));
+  }
+  if (check.check === "Codex installed" && check.ok === false) {
+    const link = el("a", {href: "https://openai.com/codex/", target: "_blank"}, "Download Codex");
+    extra.append(link);
+  }
+  if (check.check === "Metabase version" && check.ok) {
+    const upd = el("button", {}, "Update rules and skills");
+    const sch = el("button", {}, "Save schema snapshot");
+    upd.onclick = () => action(upd, "/api/update", msg);
+    sch.onclick = () => action(sch, "/api/schema", msg);
+    extra.append(el("div", {class: "row", style: "display:flex; gap:8px; flex-wrap:wrap"}, upd, sch), msg);
+  }
+  if (extra.childNodes.length) node.append(extra);
+  return node;
+}
+
+async function load() {
+  const steps = document.getElementById("steps");
+  steps.textContent = "Checking…";
+  try {
+    const state = await api("/api/checks");
+    steps.textContent = "";
+    for (const check of state.checks) steps.append(stepNode(check, state));
+    document.getElementById("vpn").checked = !!state.config.requires_vpn;
+    document.getElementById("collection").value = state.config.staff_collection_id ?? "";
+  } catch (e) {
+    steps.textContent = "The launcher isn't running. Double-click start.command again.";
+  }
+}
+
+async function loadCards() {
+  const box = document.getElementById("cards");
+  const {cards} = await api("/api/prompts");
+  for (const c of cards) {
+    const btn = el("button", {}, "Copy");
+    btn.onclick = async () => { await navigator.clipboard.writeText(c.text); btn.textContent = "Copied"; setTimeout(() => btn.textContent = "Copy", 1500); };
+    box.append(el("div", {class: "card"}, el("div", {}, el("small", {}, c.section), c.text), btn));
+  }
+}
+
+document.getElementById("recheck").onclick = load;
+document.getElementById("open").onclick = (e) => action(e.target, "/api/open-codex", document.getElementById("open-msg"));
+document.getElementById("vpn").onchange = async (e) => {
+  showMsg(document.getElementById("settings-msg"), await api("/api/config", {requires_vpn: e.target.checked}));
+  load();
+};
+document.getElementById("collection-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const v = document.getElementById("collection").value.trim();
+  showMsg(document.getElementById("settings-msg"), await api("/api/config", {staff_collection_id: v === "" ? null : Number(v)}));
+  load();
+};
+load();
+loadCards();
+</script>
+</body>
+</html>
