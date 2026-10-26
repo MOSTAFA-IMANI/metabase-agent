@@ -103,6 +103,7 @@ const STEP_TITLES = {
   "Metabase reachable": "Reach Metabase",
   "Metabase version": "Metabase version",
   "Metabase sign-in": "Sign in to Metabase",
+  "Codex connected to Metabase": "Connect Codex to Metabase",
   "Codex installed": "Codex installed",
   "Node.js": "Node.js (optional)",
   "Staff collection": "Staff collection",
@@ -131,12 +132,14 @@ function stepNode(check, state) {
     };
     extra.append(form, msg);
   }
-  if (check.check === "Metabase sign-in" && state.mode === "mcp") {
-    extra.append(el("div", {class: "detail"}, "Codex signs in for you the first time you ask about data."));
+  if (check.check === "Codex connected to Metabase" && check.ok === false) {
+    const btn = el("button", {class: "primary"}, "Connect");
+    btn.onclick = async () => { await action(btn, "/api/connect-mcp", msg); load(); };
+    extra.append(btn, msg);
   }
   if (check.check === "Codex installed" && check.ok === false) {
-    const link = el("a", {href: "https://openai.com/codex/", target: "_blank"}, "Download Codex");
-    extra.append(link);
+    extra.append(el("div", {class: "detail"}, "Install it by pasting this into Terminal, then click Check again:"),
+                 el("code", {}, "npm install -g @openai/codex"));
   }
   if (check.check === "Metabase version" && check.ok) {
     const upd = el("button", {}, "Update rules and skills");

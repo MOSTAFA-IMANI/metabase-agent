@@ -58,6 +58,25 @@ def find_codex():
     return {"found": False}
 
 
+CODEX_CONFIG = Path.home() / ".codex" / "config.toml"
+
+
+def find_mcp_url(config, base):
+    # The MCP route moved between releases; the first path that isn't a 404 wins.
+    for path in config.get("mcp_paths", []):
+        status, _ = get(base + path)
+        if status is not None and status != 404:
+            return base + path
+    return base + config.get("mcp_paths", ["/api/metabase-mcp"])[0]
+
+
+def codex_has_metabase():
+    try:
+        return "[mcp_servers.metabase]" in CODEX_CONFIG.read_text()
+    except OSError:
+        return False
+
+
 def check_metabase(config, base, state, add):
     # 3. Version decides MCP or API mode.
     _, props = get(base + "/api/session/properties")
@@ -81,7 +100,11 @@ def check_metabase(config, base, state, add):
         else:
             add("Metabase sign-in", False, "not signed in; use the form below or run: python3 tools/metabase_agent.py login")
     else:
-        add("Metabase sign-in", None, "sign in once with: codex mcp login metabase")
+        state["mcp_url"] = find_mcp_url(config, base)
+        if codex_has_metabase():
+            add("Codex connected to Metabase", True, "Codex has the metabase server; it asks you to sign in the first time")
+        else:
+            add("Codex connected to Metabase", False, "not connected yet; click Connect, then sign in with your Metabase account")
 
 
 def run_checks(config):

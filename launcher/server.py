@@ -62,6 +62,25 @@ def open_codex():
     return ok, out or "Opened Codex in Terminal."
 
 
+def connect_codex_mcp():
+    """Add the Metabase MCP server to the user's Codex config, then start the sign-in."""
+    state = check_setup.check_and_save()
+    url = state.get("mcp_url")
+    if not url:
+        return False, "Metabase is not in MCP mode; sign in with the form instead."
+    if not check_setup.codex_has_metabase():
+        check_setup.CODEX_CONFIG.parent.mkdir(parents=True, exist_ok=True)
+        existing = check_setup.CODEX_CONFIG.read_text() if check_setup.CODEX_CONFIG.exists() else ""
+        block = f'[mcp_servers.metabase]\nurl = "{url}"\n'
+        check_setup.CODEX_CONFIG.write_text(existing.rstrip("\n") + "\n\n" + block if existing.strip() else block)
+    codex = check_setup.find_codex()
+    if codex["found"] and codex["kind"] == "cli" and platform.system() == "Darwin":
+        script = 'tell application "Terminal" to do script "codex mcp login metabase"'
+        run(["osascript", "-e", script, "-e", 'tell application "Terminal" to activate'])
+        return True, "Added Metabase to Codex. A Terminal window opened: finish the Metabase sign-in in your browser."
+    return True, "Added Metabase to Codex. Codex asks you to sign in to Metabase the first time you ask about data."
+
+
 def update_config(changes):
     config = json.loads(check_setup.CONFIG_FILE.read_text())
     for key, value in changes.items():
@@ -131,6 +150,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/open-codex":
                 ok, out = open_codex()
                 return self.send(200, {"ok": ok, "message": out or "Codex is opening."})
+            if self.path == "/api/connect-mcp":
+                ok, out = connect_codex_mcp()
+                return self.send(200, {"ok": ok, "message": out})
             if self.path == "/api/config":
                 update_config(body)
                 return self.send(200, {"ok": True, "message": "Saved."})
