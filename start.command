@@ -9,4 +9,8 @@ if ! command -v python3 >/dev/null 2>&1 || ! python3 -c "" >/dev/null 2>&1; then
   exit 1
 fi
 git pull --ff-only --quiet 2>/dev/null || true
-exec python3 launcher/server.py
+# Keep a log so problems can be checked later, and keep the window open if it stops.
+python3 -u launcher/server.py 2>&1 | tee launcher.log
+echo
+echo "The launcher stopped. Details are in $(pwd)/launcher.log"
+read -r -p "Press Enter to close."

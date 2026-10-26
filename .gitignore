@@ -3,3 +3,4 @@
 schema/
 __pycache__/
 .DS_Store
+launcher.log
