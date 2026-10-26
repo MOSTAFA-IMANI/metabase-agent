@@ -141,8 +141,6 @@ def run_checks(config):
         node = shutil.which("node")
         add("Node.js", None, f"found at {node}" if node else "not found; only needed to install the Codex CLI with npm")
 
-    if state.get("staff_collection_id") is None:
-        add("Staff collection", False, "not set; add it in Settings or in workspace.config.json")
     return results, state
 
 
