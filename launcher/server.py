@@ -6,9 +6,7 @@ steps (checks, Metabase sign-in, updates, schema snapshot, open Codex) for the
 page. Standard library only, so it runs on a stock Mac with python3.
 """
 import json
-import platform
 import secrets
-import shlex
 import subprocess
 import sys
 import threading
@@ -49,30 +47,18 @@ def prompt_cards():
     return cards
 
 
-def applescript_string(text):
-    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
-
 def open_codex(prompt=""):
-    """Open Codex in the workspace, starting with `prompt` when one is given."""
+    """Open the Codex app on the workspace; a request goes to the clipboard to paste."""
     state = check_setup.find_codex()
     if not state["found"]:
-        return False, "Codex is not installed yet. Download the Codex app for Mac from openai.com/codex, install it, then click Check again."
-    if platform.system() != "Darwin":
-        return False, f"Open Codex yourself in this folder: {ROOT}"
+        return False, "The Codex app isn't installed. Download it from openai.com/codex, install it, then click Check again."
     prompt = prompt.strip()
-    if state["kind"] == "app":
-        if prompt:
-            subprocess.run(["pbcopy"], input=prompt, text=True)
-        ok, out = run(["open", "-a", state["path"], str(ROOT)])
-        return ok, out or ("Codex is opening. Your request is copied: paste it with Cmd+V." if prompt else "Codex is opening.")
-    command = f"cd {shlex.quote(str(ROOT))} && codex"
     if prompt:
-        command += " " + shlex.quote(prompt)
-    script = f'tell application "Terminal" to do script {applescript_string(command)}'
-    ok, out = run(["osascript", "-e", script, "-e", 'tell application "Terminal" to activate'])
-    return ok, out or ("The Codex app isn't installed, so Codex opened in Terminal. "
-                       "Install the Codex app from openai.com/codex to use the app next time.")
+        subprocess.run(["pbcopy"], input=prompt, text=True)
+    ok, out = run(["open", "-a", state["path"], str(ROOT)])
+    if not ok:
+        return False, out
+    return True, "Codex is opening. Your request is copied: paste it with Cmd+V." if prompt else "Codex is opening."
 
 
 def connect_codex_mcp():
@@ -86,11 +72,6 @@ def connect_codex_mcp():
         existing = check_setup.CODEX_CONFIG.read_text() if check_setup.CODEX_CONFIG.exists() else ""
         block = f'[mcp_servers.metabase]\nurl = "{url}"\n'
         check_setup.CODEX_CONFIG.write_text(existing.rstrip("\n") + "\n\n" + block if existing.strip() else block)
-    codex = check_setup.find_codex()
-    if codex["found"] and codex["kind"] == "cli" and platform.system() == "Darwin":
-        script = 'tell application "Terminal" to do script "codex mcp login metabase"'
-        run(["osascript", "-e", script, "-e", 'tell application "Terminal" to activate'])
-        return True, "Added Metabase to Codex. A Terminal window opened: finish the Metabase sign-in in your browser."
     return True, "Added Metabase to Codex. Codex asks you to sign in to Metabase the first time you ask about data."
 
 

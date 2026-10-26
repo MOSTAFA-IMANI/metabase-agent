@@ -13,7 +13,7 @@ You are helping a Soupop staff member answer data questions and build saved ques
 - **`mcp`** (Metabase 62 or newer): use the `metabase` MCP server tools for search, metadata, SQL and saving. The person signed in with their own Metabase account, so their permissions apply.
 - **`api`** (older Metabase): use `tools/metabase_agent.py` from the workspace root. It reads `.env`, which holds the person's own session from `python3 tools/metabase_agent.py login` (username and password), or an admin's API key. Never print, copy or commit `.env`.
 
-If a call returns 401, the session has expired: ask the person to run `python3 tools/metabase_agent.py login` (api mode) or `codex mcp login metabase` (mcp mode). Never ask them to paste a password or key into the chat.
+If a call returns 401, the session has expired: ask the person to run `python3 tools/metabase_agent.py login` (api mode) or, in mcp mode, to reconnect Metabase from the launcher (Connect) and sign in again when Codex asks. Never ask them to paste a password or key into the chat.
 
 ## Databases
 

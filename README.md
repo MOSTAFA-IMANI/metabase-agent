@@ -16,11 +16,11 @@ If macOS asks to install "command line developer tools", click Install, wait, an
 
 ## Without the launcher
 
-1. Install the Codex app (or the Codex CLI) and sign in to your OpenAI account.
+1. Install the Codex app for Mac from [openai.com/codex](https://openai.com/codex/) and sign in to your OpenAI account.
 2. Run `python3 tools/check_setup.py` in this folder and fix anything marked `FIX`.
 3. Sign in to Metabase with your own account:
    - **API mode:** `python3 tools/metabase_agent.py login` (only a session token is saved, in `.env`).
-   - **MCP mode:** copy `codex/config.toml.example` into `~/.codex/config.toml`, then run `codex mcp login metabase`.
+   - **MCP mode:** copy `codex/config.toml.example` into `~/.codex/config.toml`; the Codex app asks you to sign in to Metabase the first time.
 4. Open this folder in Codex and try a card from [prompts/prompt-cards.md](prompts/prompt-cards.md).
 
 ## What's here

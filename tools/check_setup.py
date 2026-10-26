@@ -8,10 +8,7 @@ Standard library only.
 import argparse
 import json
 import os
-import platform
 import re
-import shutil
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,18 +41,10 @@ def major_version(tag):
 
 
 def find_codex():
-    # Prefer the Codex desktop app on a Mac; the CLI is the fallback.
-    if platform.system() == "Darwin":
-        for app in ("/Applications/Codex.app", str(Path.home() / "Applications/Codex.app")):
-            if Path(app).exists():
-                return {"found": True, "kind": "app", "path": app, "version": ""}
-    path = shutil.which("codex")
-    if path:
-        try:
-            out = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10).stdout.strip()
-        except (OSError, subprocess.TimeoutExpired):
-            out = ""
-        return {"found": True, "kind": "cli", "path": path, "version": out}
+    """Find the Codex desktop app. Staff use the app only, never the CLI."""
+    for app in ("/Applications/Codex.app", str(Path.home() / "Applications/Codex.app")):
+        if Path(app).exists():
+            return {"found": True, "kind": "app", "path": app}
     return {"found": False}
 
 
@@ -130,22 +119,11 @@ def run_checks(config):
     if add("Metabase reachable", status == 200, f"{base} answered" if status == 200 else f"no answer from {base}"):
         check_metabase(config, base, state, add)
 
-    # 5. Codex.
+    # 5. Codex desktop app.
     codex = find_codex()
     state["codex"] = codex
-    if codex["found"] and codex["kind"] == "app":
-        detail = "Codex app installed"
-    elif codex["found"]:
-        detail = f"only the Terminal version ({codex.get('version') or codex['path']}); install the Codex app for Mac to use the app"
-    else:
-        detail = "install the Codex app for Mac from openai.com/codex"
-    wants_app = platform.system() == "Darwin" and codex.get("kind") != "app"
-    add("Codex installed", codex["found"] and not wants_app, detail)
-
-    # 6. Node.js matters only for installing the Codex CLI with npm.
-    if not codex["found"] or codex.get("kind") == "cli":
-        node = shutil.which("node")
-        add("Node.js", None, f"found at {node}" if node else "not found; only needed to install the Codex CLI with npm")
+    add("Codex installed", codex["found"],
+        "Codex app installed" if codex["found"] else "Codex app not found; download it from openai.com/codex")
 
     return results, state
 
