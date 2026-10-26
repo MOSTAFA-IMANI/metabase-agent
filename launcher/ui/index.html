@@ -57,6 +57,7 @@
   <div style="display:flex; gap:8px; margin-top:12px">
     <button id="recheck">Check again</button>
     <button id="open" class="primary">Open Codex</button>
+    <button id="quit" style="margin-left:auto">Quit launcher</button>
   </div>
   <div id="open-msg" class="msg"></div>
 
@@ -204,6 +205,7 @@ document.getElementById("intent-open").onclick = (e) => {
   action(e.target, "/api/open-codex", msg, {prompt: text});
 };
 document.getElementById("recheck").onclick = load;
+document.getElementById("quit").onclick = (e) => action(e.target, "/api/quit", document.getElementById("open-msg"));
 document.getElementById("open").onclick = (e) => action(e.target, "/api/open-codex", document.getElementById("open-msg"));
 document.getElementById("vpn").onchange = async (e) => {
   showMsg(document.getElementById("settings-msg"), await api("/api/config", {requires_vpn: e.target.checked}));

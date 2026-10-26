@@ -16,6 +16,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = Path(__file__).resolve().parent / "ui"
+# The Mac app reads this to reopen a launcher that is already running.
+URL_FILE = ROOT / ".launcher-url"
 sys.path.insert(0, str(ROOT / "tools"))
 
 import check_setup  # noqa: E402
@@ -76,14 +78,15 @@ def connect_codex_mcp():
 
 
 def update_config(changes):
-    config = json.loads(check_setup.CONFIG_FILE.read_text())
+    path = check_setup.LOCAL_CONFIG_FILE
+    local = json.loads(path.read_text()) if path.exists() else {}
     for key, value in changes.items():
         kind = EDITABLE_CONFIG.get(key)
         if kind is None:
             raise ValueError(f"{key} can't be changed here")
-        config[key] = None if value in ("", None) and kind is int else kind(value)
-    check_setup.CONFIG_FILE.write_text(json.dumps(config, indent=2) + "\n")
-    return config
+        local[key] = None if value in ("", None) and kind is int else kind(value)
+    path.write_text(json.dumps(local, indent=2) + "\n")
+    return local
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -147,6 +150,10 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/connect-mcp":
                 ok, out = connect_codex_mcp()
                 return self.send(200, {"ok": ok, "message": out})
+            if self.path == "/api/quit":
+                self.send(200, {"ok": True, "message": "The launcher has stopped. You can close this tab."})
+                threading.Thread(target=self.server.shutdown).start()
+                return
             if self.path == "/api/config":
                 update_config(body)
                 return self.send(200, {"ok": True, "message": "Saved."})
@@ -171,14 +178,16 @@ def main():
     if server is None:
         sys.exit("No free port between 8765 and 8784.")
     url = f"http://127.0.0.1:{server.server_port}/"
-    print(f"Soupop launcher is running at {url}\nLeave this window open. Press Ctrl+C to stop.")
+    URL_FILE.write_text(url + "\n")
+    print(f"Soupop launcher is running at {url}", flush=True)
     if "--no-browser" not in sys.argv:
         threading.Timer(0.5, webbrowser.open, [url]).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
-
+    finally:
+        URL_FILE.unlink(missing_ok=True)
 
 if __name__ == "__main__":
     main()

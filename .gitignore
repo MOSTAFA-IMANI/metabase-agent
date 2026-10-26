@@ -4,3 +4,5 @@ schema/
 __pycache__/
 .DS_Store
 launcher.log
+.launcher-url
+.workspace-local.json

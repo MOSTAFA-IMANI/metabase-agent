@@ -20,6 +20,8 @@ from metabase_agent import load_env  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = ROOT / "workspace.config.json"
 STATE_FILE = ROOT / ".workspace-state.json"
+# Settings changed on this computer (launcher Settings); git-ignored so updates never clash.
+LOCAL_CONFIG_FILE = ROOT / ".workspace-local.json"
 
 
 def get(url, headers=None, timeout=5):
@@ -130,6 +132,8 @@ def run_checks(config):
 
 def load_config():
     config = json.loads(CONFIG_FILE.read_text())
+    if LOCAL_CONFIG_FILE.exists():
+        config.update(json.loads(LOCAL_CONFIG_FILE.read_text()))
     if os.environ.get("SOUPOP_REQUIRES_VPN") in ("0", "1"):
         config["requires_vpn"] = os.environ["SOUPOP_REQUIRES_VPN"] == "1"
     return config

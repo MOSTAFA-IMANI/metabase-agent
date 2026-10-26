@@ -4,15 +4,11 @@ Open this folder in Codex to ask data questions and build Metabase questions and
 
 ## Start the launcher (Mac)
 
-Paste this into Terminal once:
+1. Download [Soupop-Data-mac.zip](https://github.com/MOSTAFA-IMANI/metabase-agent/raw/claude/workspace-v0/download/Soupop-Data-mac.zip) and double-click it to unzip.
+2. Drag **Soupop Data** into **Applications**.
+3. Open it. The first time, macOS says it can't check the app: open **System Settings > Privacy & Security**, scroll down and click **Open Anyway** next to "Soupop Data". (On older macOS: right-click the app, choose **Open**, then **Open**.)
 
-```bash
-cd ~ && git clone -b claude/workspace-v0 https://github.com/MOSTAFA-IMANI/metabase-agent.git soupop-data && open soupop-data/start.command
-```
-
-A page opens in your browser with the checklist: network, Metabase, sign-in, Codex. Fix anything red (sign in with your Metabase email and password right on the page), then press **Open Codex** and copy a prompt card. Next time, double-click `start.command` in the `soupop-data` folder; it also pulls the latest rules and skills.
-
-If macOS asks to install "command line developer tools", click Install, wait, and paste the line again.
+Soupop Data downloads this workspace into `~/soupop-data` the first time, updates it every time you open it, and shows the checklist page in your browser. Use **Quit launcher** on the page to stop it. If Apple's developer tools are missing, it asks you to install them once.
 
 ## Without the launcher
 
