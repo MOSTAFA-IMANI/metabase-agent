@@ -57,7 +57,7 @@ def open_codex(prompt=""):
     """Open Codex in the workspace, starting with `prompt` when one is given."""
     state = check_setup.find_codex()
     if not state["found"]:
-        return False, "Codex is not installed yet. Install the Codex app from OpenAI, then try again."
+        return False, "Codex is not installed yet. Download the Codex app for Mac from openai.com/codex, install it, then click Check again."
     if platform.system() != "Darwin":
         return False, f"Open Codex yourself in this folder: {ROOT}"
     prompt = prompt.strip()
@@ -71,7 +71,8 @@ def open_codex(prompt=""):
         command += " " + shlex.quote(prompt)
     script = f'tell application "Terminal" to do script {applescript_string(command)}'
     ok, out = run(["osascript", "-e", script, "-e", 'tell application "Terminal" to activate'])
-    return ok, out or "Opened Codex in Terminal."
+    return ok, out or ("The Codex app isn't installed, so Codex opened in Terminal. "
+                       "Install the Codex app from openai.com/codex to use the app next time.")
 
 
 def connect_codex_mcp():

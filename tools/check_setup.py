@@ -44,6 +44,11 @@ def major_version(tag):
 
 
 def find_codex():
+    # Prefer the Codex desktop app on a Mac; the CLI is the fallback.
+    if platform.system() == "Darwin":
+        for app in ("/Applications/Codex.app", str(Path.home() / "Applications/Codex.app")):
+            if Path(app).exists():
+                return {"found": True, "kind": "app", "path": app, "version": ""}
     path = shutil.which("codex")
     if path:
         try:
@@ -51,10 +56,6 @@ def find_codex():
         except (OSError, subprocess.TimeoutExpired):
             out = ""
         return {"found": True, "kind": "cli", "path": path, "version": out}
-    if platform.system() == "Darwin":
-        for app in ("/Applications/Codex.app", str(Path.home() / "Applications/Codex.app")):
-            if Path(app).exists():
-                return {"found": True, "kind": "app", "path": app, "version": ""}
     return {"found": False}
 
 
@@ -132,9 +133,14 @@ def run_checks(config):
     # 5. Codex.
     codex = find_codex()
     state["codex"] = codex
-    add("Codex installed", codex["found"],
-        f"{codex['kind']} at {codex['path']} {codex.get('version', '')}".strip() if codex["found"]
-        else "install the Codex app or CLI from OpenAI")
+    if codex["found"] and codex["kind"] == "app":
+        detail = "Codex app installed"
+    elif codex["found"]:
+        detail = f"only the Terminal version ({codex.get('version') or codex['path']}); install the Codex app for Mac to use the app"
+    else:
+        detail = "install the Codex app for Mac from openai.com/codex"
+    wants_app = platform.system() == "Darwin" and codex.get("kind") != "app"
+    add("Codex installed", codex["found"] and not wants_app, detail)
 
     # 6. Node.js matters only for installing the Codex CLI with npm.
     if not codex["found"] or codex.get("kind") == "cli":

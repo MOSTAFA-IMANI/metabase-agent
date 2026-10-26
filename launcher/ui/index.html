@@ -69,7 +69,7 @@
     </div>
     <textarea id="intent-text" rows="3" placeholder="Pick one above or type what you need, in English or Persian"
       style="font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); resize:vertical; width:100%"></textarea>
-    <div><button id="intent-open" class="primary">Open Codex with this</button></div>
+    <div><button id="intent-open" class="primary">Open the Codex app with this</button></div>
     <div id="intent-msg" class="msg"></div>
   </div>
 
@@ -151,8 +151,8 @@ function stepNode(check, state) {
     extra.append(btn, msg);
   }
   if (check.check === "Codex installed" && check.ok === false) {
-    extra.append(el("div", {class: "detail"}, "Install it by pasting this into Terminal, then click Check again:"),
-                 el("code", {}, "npm install -g @openai/codex"));
+    extra.append(el("a", {href: "https://openai.com/codex/", target: "_blank"}, "Download the Codex app for Mac"),
+                 el("div", {class: "detail"}, "Open the download, drag Codex into Applications, sign in once, then click Check again."));
   }
   if (check.check === "Metabase version" && check.ok) {
     const upd = el("button", {}, "Update rules and skills");
