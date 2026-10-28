@@ -1,6 +1,9 @@
 .env
 soupop-metabase.env
 .workspace-state.json
+.soupop-version
+windows/SoupopSetup/bin/
+windows/SoupopSetup/obj/
 schema/
 sql/snapshot/
 __pycache__/
