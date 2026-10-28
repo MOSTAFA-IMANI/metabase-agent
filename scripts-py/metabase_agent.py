@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib import error, request
 
 
-# The workspace root holds .env; this file lives in tools/.
+# The workspace root holds .env; this file lives in scripts-py/.
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = ROOT / ".env"
 DEFAULT_URL = "https://mt.soupop.ir"

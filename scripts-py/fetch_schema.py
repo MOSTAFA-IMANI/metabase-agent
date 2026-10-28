@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Save a compact schema snapshot of the Soupop databases to schema/.
+"""Save a compact schema snapshot of the Soupop databases to sql/snapshot/.
 
 A fallback for when Metabase is unreachable; live metadata wins when it is not.
 Uses the signed-in session or API key in .env.
@@ -11,7 +11,7 @@ from pathlib import Path
 from metabase_agent import MetabaseClient
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "schema"
+OUT = ROOT / "sql" / "snapshot"
 
 
 def fetch_all():

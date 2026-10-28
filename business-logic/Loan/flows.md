@@ -55,11 +55,11 @@ When a report asks for loan performance, retain the installment `source` and con
 - [Installment items by loan](https://mt.soupop.ir/question/858)
 - [Paid-installment DSO question](https://mt.soupop.ir/question/1007)
 
-Dashboard 29 has the same title but was empty when checked. The builder `build_loan_operation_dashboard.py` creates new questions and a new dashboard when run; inspect dashboard 30 before any changes and do not rerun the builder as an update mechanism.
+Dashboard 29 has the same title but was empty when checked. The builder `scripts-py/build_loan_operation_dashboard.py` creates new questions and a new dashboard when run; inspect dashboard 30 before any changes and do not rerun the builder as an update mechanism.
 
 The builder description lists dashboard filters for date, step, step status, customer ID, and auto-service ID as targets to add after creation. Confirm the actual dashboard filter mappings in Metabase before assuming those filters affect every card.
 
 ## Related policy documents
 
-- [New-user credit backend rules](../../BACKEND_NEW_USER_CREDIT_RULES.md) define a proposed 5M Toman initial cap and step-up policy.
-- [Credit segmentation analysis](../../CREDIT_SEGMENTATION_ANALYSIS.md) contains research bands and validation caveats. Its exploratory 10M ladder is not the backend new-user cap.
+- [New-user credit backend rules](../Credit/BACKEND_NEW_USER_CREDIT_RULES.md) define a proposed 5M Toman initial cap and step-up policy.
+- [Credit segmentation analysis](../Credit/CREDIT_SEGMENTATION_ANALYSIS.md) contains research bands and validation caveats. Its exploratory 10M ladder is not the backend new-user cap.

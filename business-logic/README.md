@@ -33,6 +33,8 @@ Schema notes were checked against the live Metabase metadata on 2026-10-10. Post
 - [Analytics asset map](Analytics/README.md)
 - [Cash-flow projection method](Analytics/cash-flow.md)
 - [Chatbot analytics method](Analytics/chatbot.md)
+- [Credit research](Credit/CREDIT_SEGMENTATION_ANALYSIS.md) and [new-user credit backend rules](Credit/BACKEND_NEW_USER_CREDIT_RULES.md)
+- [Company business model](company/overview.md) (Persian) and the five Soupop business skills in [company/skills/](company/skills/)
 
 ## Live Metabase assets
 
@@ -54,22 +56,27 @@ Links were checked against the live dashboard and question listings on 2026-10-1
 | Paid-installment DSO | [Question 1007](https://mt.soupop.ir/question/1007) | DSO for paid installments in a filtered customer population |
 | Promo-code usage | [Question 1062](https://mt.soupop.ir/question/1062) | Configured promo codes, shop-order usage, and separate order/invoice outcomes |
 
-The loan builder created two same-name dashboards. ID 30 is the populated one. ID 29 was empty at the time of inspection. Do not rerun a `build_*.py` script to update an existing dashboard; builders commonly create duplicate questions and dashboards. `add_ai_chatbot_source_analytics.py` is the idempotent update example for dashboard 37.
+The loan builder created two same-name dashboards. ID 30 is the populated one. ID 29 was empty at the time of inspection. Do not rerun a `build_*.py` script to update an existing dashboard; builders commonly create duplicate questions and dashboards. `scripts-py/add_ai_chatbot_source_analytics.py` is the idempotent update example for dashboard 37.
 
 ## Workspace map
+
+[START_HERE.md](../START_HERE.md) has the full folder map. The parts this index points to:
 
 | File or group | Use |
 |---|---|
 | [AGENTS.md](../AGENTS.md) | How Codex works in this workspace: connection modes, safety rules, where to save |
-| [.agents/skills/](../.agents/skills/) | House rules, saved-question and dashboard procedures |
-| [tools/metabase_agent.py](../tools/metabase_agent.py) | API client and command-line helper (fallback mode) |
-| [tools/fetch_schema.py](../tools/fetch_schema.py) | Writes a schema snapshot to `schema/`; live metadata wins when reachable |
-
-Analyst-only material (credit research, cash-flow workbook, dashboard builder scripts, the SQL dump) stays in the analysts' `Metabase` folder and is not part of this workspace.
+| [.agents/skills/](../.agents/skills/) | House rules, saved-question and dashboard procedures, and the Soupop business skills |
+| [company/](company/) | Business model overview and the source copy of the Soupop business skills |
+| [Credit/](Credit/) | Credit research and the proposed new-user backend rules |
+| [scripts-py/metabase_agent.py](../scripts-py/metabase_agent.py) | API client and command-line helper (fallback mode) |
+| [scripts-py/](../scripts-py/) | Saved-question and dashboard builders (`build_*.py`, `add_*.py`); inspect the target and the script before running |
+| [scripts-js/](../scripts-js/) | Cash-flow workbook builder |
+| [sql/](../sql/) | PostgreSQL schema dump `soupop.sql` and the live snapshot from `scripts-py/fetch_schema.py`; live metadata wins when reachable |
+| [docs/metabase/](../docs/metabase/) | Metabase REST API reference, API key setup, analyst API runbook and MCP setup |
 
 ## How to refresh this index
 
-1. Confirm the database with `python3 tools/metabase_agent.py list-databases`.
+1. Confirm the database with `python3 scripts-py/metabase_agent.py list-databases`.
 2. Read current columns from live Metabase metadata or `information_schema`; do not treat hard-coded Metabase IDs as permanent.
 3. Inspect the query behind a saved question before repeating its title as a business definition.
 4. Run aggregate checks at the requested grain and time boundary. Avoid personal fields unless the task requires them.

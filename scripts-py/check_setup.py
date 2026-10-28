@@ -80,7 +80,7 @@ def check_metabase(config, base, state, add):
         if status == 200 and isinstance(user, dict):
             add("Metabase sign-in", True, f"signed in as {user.get('email', 'unknown')}")
         else:
-            add("Metabase sign-in", False, "not signed in; use the form below or run: python3 tools/metabase_agent.py login")
+            add("Metabase sign-in", False, "not signed in; use the form below or run: python3 scripts-py/metabase_agent.py login")
     else:
         state["mcp_url"] = find_mcp_url(config, base)
         if codex_has_metabase():
