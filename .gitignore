@@ -1,0 +1,12 @@
+.env
+soupop-metabase.env
+.workspace-state.json
+schema/
+sql/snapshot/
+__pycache__/
+.DS_Store
+*.log
+data/*
+!data/README.md
+reports/*
+!reports/README.md

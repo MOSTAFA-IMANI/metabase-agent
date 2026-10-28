@@ -1,0 +1,15 @@
+{
+  "metabase_url": "https://mt.soupop.ir",
+  "requires_vpn": false,
+  "vpn_probe_url": "https://mt.soupop.ir/api/health",
+  "databases": {
+    "postgres": 2,
+    "clickhouse": 3
+  },
+  "staff_collection_id": null,
+  "mcp_min_major_version": 62,
+  "mcp_paths": [
+    "/api/metabase-mcp",
+    "/api/mcp"
+  ]
+}
