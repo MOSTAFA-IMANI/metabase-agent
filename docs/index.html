@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soupop Data Start</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1d2330; --quiet: #5d6675; --line: #e3e6eb;
+    --accent: #2f6fdf; --good: #1f8a4c; --bad: #c2412d; --skip: #8a93a3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171c; --card: #1d2128; --ink: #e8ebf0; --quiet: #9aa3b2; --line: #2c323c;
+            --accent: #6d9cf0; --good: #4cc27e; --bad: #f0806c; --skip: #6c7584; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; }
+  .sub { color: var(--quiet); margin: 0 0 24px; }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+          padding: 14px 16px; margin-bottom: 10px; display: grid;
+          grid-template-columns: 28px 1fr; gap: 4px 12px; align-items: start; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+         font-size: 12px; font-weight: 700; color: #fff; background: var(--skip); margin-top: 1px; }
+  .dot.ok { background: var(--good); } .dot.bad { background: var(--bad); }
+  .title { font-weight: 600; }
+  .detail { color: var(--quiet); font-size: 14px; grid-column: 2; word-break: break-word; }
+  .extra { grid-column: 2; margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+         display: grid; gap: 10px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+           border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  a.button { display: inline-block; text-decoration: none; border: 1px solid var(--accent); color: var(--accent);
+             border-radius: 8px; padding: 6px 12px; }
+  textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+             background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
+  .msg { font-size: 13px; white-space: pre-wrap; }
+  .msg.ok { color: var(--good); } .msg.bad { color: var(--bad); }
+  .cards { display: grid; gap: 8px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+          display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+  .card small { color: var(--quiet); display: block; }
+  label.toggle { display: flex; gap: 8px; align-items: center; color: var(--quiet); font-size: 14px; }
+  ol.how { margin: 0; padding-left: 20px; color: var(--quiet); font-size: 14px; }
+  .muted { color: var(--quiet); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Soupop Data Start</h1>
+  <p class="sub">Get ready to ask Codex about Soupop data. Make every step green, then tell Codex what you need.</p>
+
+  <div id="steps"></div>
+  <button id="recheck">Check again</button>
+
+  <h2>What do you want to do?</h2>
+  <div class="box">
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <button data-intent="Answer this data question: ">Ask a data question</button>
+      <button data-intent="Make a Metabase question showing ... and save it in the Staff collection.">Make a saved question</button>
+      <button data-intent="Build a Metabase dashboard called &quot;...&quot; with ... and a date filter.">Build a dashboard</button>
+    </div>
+    <textarea id="intent-text" rows="3" placeholder="Pick one above or type what you need, in English or Persian"></textarea>
+    <div><button id="intent-copy" class="primary">Copy for Codex</button></div>
+    <div id="intent-msg" class="msg"></div>
+  </div>
+
+  <h2>Or start from an example</h2>
+  <div id="cards" class="cards"></div>
+
+  <h2>Settings on this computer</h2>
+  <div class="box">
+    <label class="toggle"><input type="checkbox" id="vpn"> Metabase needs the org VPN</label>
+    <div class="muted" id="vpn-note"></div>
+  </div>
+</main>
+<script>
+// Everything this page needs comes from the GitHub repo, so a change there
+// reaches every computer on the next reload. The values below are fallbacks.
+const REPO = "MOSTAFA-IMANI/metabase-agent";
+const BRANCHES = ["claude/workspace-v0", "main"];  // first one that exists wins
+const FALLBACK_CONFIG = {metabase_url: "https://mt.soupop.ir", requires_vpn: false,
+                         vpn_probe_url: "https://mt.soupop.ir/api/health"};
+const FALLBACK_CARDS = [
+  {section: "Quick answers", text: "How many confirmed invoices did we have [last week], and how does that compare with the week before?"},
+  {section: "Dashboards", text: "Build a dashboard \"[Weekly sales overview]\" with confirmed sales, number of invoices, average invoice value, and a daily sales line, with a date filter."},
+];
+const CODEX_DOWNLOAD = "https://openai.com/codex/";
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const PASTE = IS_MAC ? "Cmd+V" : "Ctrl+V";
+
+// Browser storage can be blocked (private windows); the page still works, it just forgets ticks.
+const store = {
+  get(k) { try { return localStorage.getItem("soupop." + k); } catch { return null; } },
+  set(k, v) { try { v === null ? localStorage.removeItem("soupop." + k) : localStorage.setItem("soupop." + k, v); } catch {} },
+};
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === "class" ? n.className = v : n.setAttribute(k, v);
+  for (const kid of kids) n.append(kid);
+  return n;
+};
+const showMsg = (node, ok, text) => { node.textContent = text; node.className = "msg " + (ok ? "ok" : "bad"); };
+
+async function fetchWithTimeout(url, options = {}, ms = 8000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, {...options, signal: ctrl.signal, cache: "no-store"}); }
+  finally { clearTimeout(timer); }
+}
+
+// Metabase does not allow other sites to read its answers, but a "no-cors" request
+// still tells us whether the server answered at all, which is what reachability means.
+async function reachable(url) {
+  try { await fetchWithTimeout(url, {mode: "no-cors"}); return true; } catch { return false; }
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const t = el("textarea", {style: "position:fixed; opacity:0"});
+  t.value = text; document.body.append(t); t.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch {}
+  t.remove();
+  return ok;
+}
+
+let BRANCH = BRANCHES[0];
+async function loadRepo() {
+  for (const branch of BRANCHES) {
+    try {
+      const res = await fetchWithTimeout(`https://raw.githubusercontent.com/${REPO}/${branch}/workspace.config.json`);
+      if (res.ok) { BRANCH = branch; return {config: await res.json(), online: true}; }
+    } catch {}
+  }
+  return {config: FALLBACK_CONFIG, online: false};
+}
+
+async function lastUpdate() {
+  try {
+    const res = await fetchWithTimeout(`https://api.github.com/repos/${REPO}/commits/${encodeURIComponent(BRANCH)}`);
+    if (!res.ok) return null;
+    const c = await res.json();
+    return {date: new Date(c.commit.committer.date), message: c.commit.message.split("\n")[0]};
+  } catch { return null; }
+}
+
+function daysAgo(date) {
+  const d = Math.floor((Date.now() - date.getTime()) / 86400000);
+  return d <= 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
+}
+
+function setupRequest(repoUrl) {
+  return [
+    "Set up this folder as the Soupop data workspace:",
+    `1. If this folder is empty, get ${repoUrl} (branch ${BRANCH}) into it: use git clone if git is installed, otherwise download the branch zip from GitHub and unzip it here. If it is already a clone, run git pull.`,
+    "2. Then follow AGENTS.md, section \"Setting up\": run the setup check, connect Metabase in my Codex settings, and tell me in plain words what is ready and what I still need to do.",
+  ].join("\n");
+}
+
+// A step a browser cannot check by itself: the person ticks it, and the tick is remembered.
+function manualStep(key, title, detail, extras) {
+  const done = store.get(key) === "1";
+  const tick = el("input", {type: "checkbox"});
+  tick.checked = done;
+  tick.onchange = () => { store.set(key, tick.checked ? "1" : null); render(); };
+  return {status: done ? "ok" : "bad", title, detail,
+          extra: [...extras, el("label", {class: "toggle"}, tick, "Done")]};
+}
+
+let state = null;
+
+function stepNode(s) {
+  const mark = s.status === "ok" ? "ok" : s.status === "bad" ? "bad" : "";
+  const node = el("div", {class: "step"},
+    el("div", {class: "dot " + mark}, s.status === "ok" ? "✓" : s.status === "bad" ? "!" : "–"),
+    el("div", {class: "title"}, s.title),
+    el("div", {class: "detail"}, s.detail));
+  if (s.extra && s.extra.length) node.append(el("div", {class: "extra"}, ...s.extra));
+  return node;
+}
+
+function render() {
+  if (!state) return;
+  const {config, online, metabaseUp, vpnUp, needsVpn, update} = state;
+  const base = config.metabase_url.replace(/\/$/, "");
+  const repoUrl = `https://github.com/${REPO}`;
+  const steps = [];
+
+  steps.push(needsVpn
+    ? {status: vpnUp ? "ok" : "bad", title: "Org VPN",
+       detail: vpnUp ? "Connected to the internal network." : "Can't reach the internal network. Turn on the org VPN, then click Check again."}
+    : {status: "skip", title: "Org VPN", detail: "Not needed right now."});
+
+  steps.push({status: metabaseUp ? "ok" : "bad", title: "Reach Metabase",
+    detail: metabaseUp ? `${base} answered.` : `No answer from ${base}. Check your internet${needsVpn ? " and VPN" : ""}, then click Check again.`,
+    extra: [el("a", {href: base, target: "_blank", rel: "noopener"}, "Open Metabase and sign in once")]});
+
+  steps.push(online
+    ? {status: "ok", title: "Latest rules and business docs",
+       detail: update ? `Updated ${daysAgo(update.date)}: ${update.message}. Codex gets them when it updates your folder.` : "Available on GitHub.",
+       extra: [el("a", {href: `${repoUrl}/tree/${BRANCH}/business-logic`, target: "_blank", rel: "noopener"}, "Read the business docs")]}
+    : {status: "bad", title: "Latest rules and business docs", detail: "Can't reach GitHub, so this page shows saved examples. Check your internet."});
+
+  steps.push(manualStep("codex", "Install the Codex app",
+    "A web page can't see which apps are installed. Install the Codex app, sign in to your OpenAI account, then tick Done.",
+    [el("a", {class: "button", href: CODEX_DOWNLOAD, target: "_blank", rel: "noopener"}, "Download the Codex app")]));
+
+  const copySetup = el("button", {class: "primary"}, "Copy setup request");
+  const setupMsg = el("div", {class: "msg"});
+  copySetup.onclick = async () => {
+    const ok = await copyText(setupRequest(repoUrl));
+    showMsg(setupMsg, ok, ok ? `Copied. Paste it into Codex with ${PASTE} and press Enter.` : "Couldn't copy. Select the text below and copy it yourself.");
+    if (!ok) setupMsg.after(el("textarea", {rows: "5", readonly: ""}, setupRequest(repoUrl)));
+  };
+  const setup = manualStep("workspace", "Set up your Soupop folder in Codex",
+    "Codex does the setup for you: it downloads the workspace, connects Metabase and checks everything.", [copySetup]);
+  setup.extra.push(el("ol", {class: "how", style: "flex-basis:100%"},
+    el("li", {}, "Make a new empty folder called soupop-data (in Documents is fine)."),
+    el("li", {}, "In the Codex app, open that folder as your project."),
+    el("li", {}, `Click Copy setup request, paste it into Codex with ${PASTE}, and press Enter. Approve when Codex asks.`),
+    el("li", {}, "When Codex asks you to sign in to Metabase, use your own Metabase account.")), setupMsg);
+  steps.push(setup);
+
+  const box = document.getElementById("steps");
+  box.textContent = "";
+  for (const s of steps) box.append(stepNode(s));
+}
+
+async function check() {
+  document.getElementById("steps").textContent = "Checking…";
+  const {config, online} = await loadRepo();
+  const override = store.get("requires_vpn");
+  const needsVpn = override === null ? !!config.requires_vpn : override === "1";
+  const base = config.metabase_url.replace(/\/$/, "");
+  const [vpnUp, metabaseUp, update] = await Promise.all([
+    needsVpn ? reachable(config.vpn_probe_url || base + "/api/health") : Promise.resolve(null),
+    reachable(base + "/api/health"),
+    online ? lastUpdate() : Promise.resolve(null),
+  ]);
+  state = {config, online, metabaseUp, vpnUp, needsVpn, update};
+  render();
+  const vpn = document.getElementById("vpn");
+  vpn.checked = needsVpn;
+  document.getElementById("vpn-note").textContent =
+    `Team setting: ${config.requires_vpn ? "VPN needed" : "no VPN needed"}.` + (override === null ? "" : " You changed it on this computer.");
+  if (online) loadCards(); else showCards(FALLBACK_CARDS);
+}
+
+async function loadCards() {
+  try {
+    const res = await fetchWithTimeout(`https://raw.githubusercontent.com/${REPO}/${BRANCH}/prompts/prompt-cards.md`);
+    if (!res.ok) throw new Error();
+    const cards = [];
+    let section = "";
+    for (const line of (await res.text()).split("\n")) {
+      if (line.startsWith("## ")) section = line.slice(3).trim();
+      else if (/^\d+\. /.test(line) && section !== "Tips") cards.push({section, text: line.replace(/^\d+\. /, "").trim()});
+    }
+    showCards(cards.length ? cards : FALLBACK_CARDS);
+  } catch { showCards(FALLBACK_CARDS); }
+}
+
+function showCards(cards) {
+  const box = document.getElementById("cards");
+  box.textContent = "";
+  for (const c of cards) {
+    const btn = el("button", {}, "Use");
+    btn.onclick = () => setIntent(c.text);
+    box.append(el("div", {class: "card"}, el("div", {}, el("small", {}, c.section), c.text), btn));
+  }
+}
+
+function setIntent(text) {
+  const box = document.getElementById("intent-text");
+  box.value = text;
+  box.scrollIntoView({behavior: "smooth", block: "center"});
+  box.focus();
+  const at = text.search(/\.\.\.|\[/);
+  if (at >= 0) {
+    const end = text[at] === "[" ? text.indexOf("]", at) + 1 : at + 3;
+    box.setSelectionRange(at, end);
+  } else box.setSelectionRange(text.length, text.length);
+}
+
+for (const b of document.querySelectorAll("[data-intent]")) b.onclick = () => setIntent(b.dataset.intent);
+document.getElementById("intent-copy").onclick = async () => {
+  const text = document.getElementById("intent-text").value.trim();
+  const msg = document.getElementById("intent-msg");
+  if (!text) return showMsg(msg, false, "Pick an option or type what you need first.");
+  if (/\.\.\.|\[[^\]]*\]/.test(text)) return showMsg(msg, false, "Replace the ... or [ ] parts with your own details first.");
+  const ok = await copyText(text);
+  showMsg(msg, ok, ok
+    ? `Copied. Switch to the Codex app, open your soupop-data project, paste with ${PASTE} and press Enter.`
+    : "Couldn't copy. Select the text above and copy it yourself.");
+};
+document.getElementById("recheck").onclick = check;
+document.getElementById("vpn").onchange = (e) => {
+  const team = state ? !!state.config.requires_vpn : false;
+  store.set("requires_vpn", e.target.checked === team ? null : (e.target.checked ? "1" : "0"));
+  check();
+};
+check();
+</script>
+</body>
+</html>

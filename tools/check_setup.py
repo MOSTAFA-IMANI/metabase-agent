@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check this computer is ready to use Codex with Soupop Metabase.
 
-Runs the launcher's checklist from the command line and writes the result to
+Codex runs this during setup (see AGENTS.md). It writes the result to
 .workspace-state.json so Codex knows which connection mode to use.
 Standard library only.
 """
@@ -20,8 +20,6 @@ from metabase_agent import load_env  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = ROOT / "workspace.config.json"
 STATE_FILE = ROOT / ".workspace-state.json"
-# Settings changed on this computer (launcher Settings); git-ignored so updates never clash.
-LOCAL_CONFIG_FILE = ROOT / ".workspace-local.json"
 
 
 def get(url, headers=None, timeout=5):
@@ -40,14 +38,6 @@ def major_version(tag):
     # Metabase tags look like v0.56.3 (OSS) or v1.56.3 (EE); the second number is the release.
     match = re.match(r"v?\d+\.(\d+)", tag or "")
     return int(match.group(1)) if match else None
-
-
-def find_codex():
-    """Find the Codex desktop app. Staff use the app only, never the CLI."""
-    for app in ("/Applications/Codex.app", str(Path.home() / "Applications/Codex.app")):
-        if Path(app).exists():
-            return {"found": True, "kind": "app", "path": app}
-    return {"found": False}
 
 
 CODEX_CONFIG = Path.home() / ".codex" / "config.toml"
@@ -96,7 +86,7 @@ def check_metabase(config, base, state, add):
         if codex_has_metabase():
             add("Codex connected to Metabase", True, "Codex has the metabase server; it asks you to sign in the first time")
         else:
-            add("Codex connected to Metabase", False, "not connected yet; click Connect, then sign in with your Metabase account")
+            add("Codex connected to Metabase", False, "not connected yet; add the metabase server to Codex (AGENTS.md, Setting up)")
 
 
 def run_checks(config):
@@ -116,24 +106,16 @@ def run_checks(config):
     else:
         add("VPN", None, "not required (requires_vpn is false)")
 
-    # 2. Metabase reachable. Without it, skip the Metabase checks but still check Codex.
+    # 2. Metabase reachable. Without it, skip the Metabase checks.
     status, _ = get(base + "/api/health")
     if add("Metabase reachable", status == 200, f"{base} answered" if status == 200 else f"no answer from {base}"):
         check_metabase(config, base, state, add)
-
-    # 5. Codex desktop app.
-    codex = find_codex()
-    state["codex"] = codex
-    add("Codex installed", codex["found"],
-        "Codex app installed" if codex["found"] else "Codex app not found; download it from openai.com/codex")
 
     return results, state
 
 
 def load_config():
     config = json.loads(CONFIG_FILE.read_text())
-    if LOCAL_CONFIG_FILE.exists():
-        config.update(json.loads(LOCAL_CONFIG_FILE.read_text()))
     if os.environ.get("SOUPOP_REQUIRES_VPN") in ("0", "1"):
         config["requires_vpn"] = os.environ["SOUPOP_REQUIRES_VPN"] == "1"
     return config

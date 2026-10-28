@@ -1,34 +1,36 @@
 # Soupop data workspace
 
-Open this folder in Codex to ask data questions and build Metabase questions and dashboards at `https://mt.soupop.ir`. Codex reads `AGENTS.md`, the skills in `.agents/skills/` and the business rules in `business-logic/`, so you can ask in plain words.
+Open this folder in the Codex app to ask data questions and build Metabase questions and dashboards at `https://mt.soupop.ir`. Codex reads `AGENTS.md`, the skills in `.agents/skills/` and the business rules in `business-logic/`, so you can ask in plain words.
 
-## Start the launcher (Mac)
+## Start here (Mac or Windows)
 
-1. Download [Soupop-Data-mac.zip](https://github.com/MOSTAFA-IMANI/metabase-agent/raw/claude/workspace-v0/download/Soupop-Data-mac.zip) and double-click it to unzip.
-2. Drag **Soupop Data** into **Applications**.
-3. Open it. The first time, macOS says it can't check the app: open **System Settings > Privacy & Security**, scroll down and click **Open Anyway** next to "Soupop Data". (On older macOS: right-click the app, choose **Open**, then **Open**.)
+Open the **Soupop Data Start** page and follow it:
 
-Soupop Data downloads this workspace into `~/soupop-data` the first time, updates it every time you open it, and shows the checklist page in your browser. Use **Quit launcher** on the page to stop it. If Apple's developer tools are missing, it asks you to install them once.
+- Online: `https://mostafa-imani.github.io/metabase-agent/` (after GitHub Pages is turned on, see below).
+- Offline copy: download [`docs/index.html`](docs/index.html) and double-click it.
 
-## Without the launcher
+The page checks the VPN (only when needed) and Metabase, shows when the rules and business docs last changed, links the Codex app download, and gives you a setup request to paste into Codex. Codex then downloads this workspace into a folder, connects Metabase and checks everything. After that, pick an example or type what you need, click **Copy for Codex**, and paste it into Codex.
 
-1. Install the Codex app for Mac from [openai.com/codex](https://openai.com/codex/) and sign in to your OpenAI account.
-2. Run `python3 tools/check_setup.py` in this folder and fix anything marked `FIX`.
-3. Sign in to Metabase with your own account:
-   - **API mode:** `python3 tools/metabase_agent.py login` (only a session token is saved, in `.env`).
-   - **MCP mode:** copy `codex/config.toml.example` into `~/.codex/config.toml`; the Codex app asks you to sign in to Metabase the first time.
-4. Open this folder in Codex and try a card from [prompts/prompt-cards.md](prompts/prompt-cards.md).
+## What a web page can't do, and who does it instead
+
+| Step | Why the page can't | Who does it |
+|---|---|---|
+| Is the Codex app installed? | Browsers can't see installed apps | You tick **Done** after installing; the tick is remembered |
+| Open Codex | Browsers can't start apps | You switch to Codex; the request is already copied |
+| Download and update the workspace | Browsers can't write to your folders | Codex, from the setup request, and `git pull` at the start of each chat |
+| Connect Codex to Metabase | Browsers can't edit Codex settings | Codex, during setup (asks first) |
+| Metabase version and sign-in | Metabase doesn't share its answers with other websites | Codex runs `tools/check_setup.py`; Codex asks you to sign in |
 
 ## What's here
 
 | Path | What it is |
 |---|---|
-| `AGENTS.md` | Instructions Codex follows in this folder |
+| `docs/index.html` | Soupop Data Start page |
+| `AGENTS.md` | Instructions Codex follows in this folder, including setup |
 | `.agents/skills/` | `soupop-rules`, `metabase-question`, `metabase-dashboard` |
 | `business-logic/` | Table meanings, metric definitions and dashboard links |
-| `prompts/prompt-cards.md` | Ready-made prompts |
-| `start.command`, `launcher/` | Mac launcher: a local page on 127.0.0.1 that runs the checklist, signs in, updates, and opens Codex |
-| `tools/check_setup.py` | Setup checklist; writes `.workspace-state.json` |
+| `prompts/prompt-cards.md` | Ready-made prompts; the start page shows them |
+| `tools/check_setup.py` | Setup check Codex runs; writes `.workspace-state.json` |
 | `tools/metabase_agent.py` | Metabase API helper (API mode) |
 | `tools/fetch_schema.py` | Saves a schema snapshot to `schema/` as a fallback |
 | `workspace.config.json` | Metabase address, VPN switch, staff collection |
@@ -36,7 +38,9 @@ Soupop Data downloads this workspace into `~/soupop-data` the first time, update
 
 ## For maintainers
 
-- **VPN:** set `requires_vpn` to `true` in `workspace.config.json` when Metabase moves behind the org VPN; the check then probes `vpn_probe_url` first. `SOUPOP_REQUIRES_VPN=1` or `0` overrides it for one run.
+- **Publish the start page:** on GitHub, open **Settings > Pages**, set **Source** to "Deploy from a branch", pick the branch and the `/docs` folder, and save.
+- **VPN:** set `requires_vpn` to `true` in `workspace.config.json` when Metabase moves behind the org VPN. The start page reads it from GitHub on every load and probes `vpn_probe_url`; staff can override it on their own computer. `SOUPOP_REQUIRES_VPN=1` or `0` overrides it for one `check_setup.py` run.
+- **Branch:** the start page uses `claude/workspace-v0` if it exists, otherwise `main`.
 - **Staff collection:** set `staff_collection_id` once the `Staff` collection exists in Metabase.
 - **Secrets:** `.env`, `.workspace-state.json` and `schema/` are git-ignored. Never commit them.
 - Analyst material (credit research, cash-flow workbook, dashboard builder scripts, the SQL dump) stays out of this repo.

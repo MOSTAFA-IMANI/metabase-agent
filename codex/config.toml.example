@@ -1,6 +1,7 @@
-# Add this to ~/.codex/config.toml, only when tools/check_setup.py reports MCP mode
-# (Metabase 62 or newer). The launcher's Connect button does this for you, and
-# the Codex app asks you to sign in with your own Metabase account the first time.
+# Add this to ~/.codex/config.toml (Windows: %USERPROFILE%\.codex\config.toml), only
+# when tools/check_setup.py reports MCP mode (Metabase 62 or newer). Codex does
+# this during setup (AGENTS.md, "Setting up"), and asks you to sign in with your
+# own Metabase account the first time.
 #
 # Verify the path on first use: newer Metabase serves /api/metabase-mcp, some
 # 60.x builds serve /api/mcp. check_setup.py records the version it found.
