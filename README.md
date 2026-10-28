@@ -4,22 +4,40 @@ Open this folder in the Codex app to ask data questions and build Metabase quest
 
 ## Start here (Mac or Windows)
 
-Open the **Soupop Data Start** page and follow it:
+You need about 15 minutes, once.
 
-- Online: `https://mostafa-imani.github.io/metabase-agent/` (after GitHub Pages is turned on, see below).
-- Offline copy: download [`docs/index.html`](docs/index.html) and double-click it.
+**1. Download the project**
 
-The page checks the VPN (only when needed) and Metabase, shows when the rules and business docs last changed, links the Codex app download, and gives you a setup request to paste into Codex. Codex then downloads this workspace into a folder, connects Metabase and checks everything. After that, pick an example or type what you need, click **Copy for Codex**, and paste it into Codex.
+1. Click this link: [Download the Soupop data project (zip)](https://github.com/MOSTAFA-IMANI/metabase-agent/archive/refs/heads/main.zip).
+2. Open your **Downloads** folder and double-click the zip file to unzip it. (On Windows: right-click it, choose **Extract All**, then **Extract**.)
+3. Move the unzipped folder somewhere easy to find, for example **Documents**. You can rename it to `soupop-data`.
 
-## What a web page can't do, and who does it instead
+**2. Open the start page**
 
-| Step | Why the page can't | Who does it |
+1. Open the folder, then the **docs** folder inside it.
+2. Double-click **index.html**. It opens in your web browser. Chrome or Edge work best, because they can save your Metabase sign-in into the folder for you.
+
+**3. Follow the page**
+
+The page takes you through the rest, top to bottom:
+
+1. Install the Codex app.
+2. Check that Metabase answers (if it doesn't, turn on the VPN).
+3. Install Node.js.
+4. Add this folder to Codex as a project.
+5. Connect to Metabase with your Metabase email and password, or an API key from an admin. The page saves it in this folder and shows whether the connection works and whether you can run SQL.
+
+After that, pick an example on the page or type what you need, click **Copy for Codex**, and paste it into Codex.
+
+## What a web page can't do, and how the start page handles it
+
+| Step | Why a web page can't | What happens instead |
 |---|---|---|
-| Is the Codex app installed? | Browsers can't see installed apps | You tick **Done** after installing; the tick is remembered |
-| Open Codex | Browsers can't start apps | You switch to Codex; the request is already copied |
-| Download and update the workspace | Browsers can't write to your folders | Codex, from the setup request, and `git pull` at the start of each chat |
-| Connect Codex to Metabase | Browsers can't edit Codex settings | Codex, during setup (asks first) |
-| Metabase version and sign-in | Metabase doesn't share its answers with other websites | Codex runs `scripts-py/check_setup.py`; Codex asks you to sign in |
+| See whether Codex or Node.js is installed | Browsers can't see installed apps or run commands | The page links the download and shows how to check; you tick **Done**, and it remembers |
+| Open Codex | Browsers can't start apps | You switch to Codex; your request is already copied |
+| Save your Metabase sign-in | Browsers can write files only in Chrome and Edge, into a folder you choose | Chrome and Edge save `.env` in this folder; other browsers download `soupop-metabase.env` for you to move into it |
+| Test the sign-in and SQL access | Metabase answers other websites only if an admin allows them | If Metabase allows it, the page checks directly. Otherwise it copies a check request for Codex, and the page shows Codex's result |
+| Update the project | Browsers can't replace your files | The page shows when the rules last changed and links the latest zip |
 
 ## What's here
 
@@ -28,7 +46,7 @@ The page checks the VPN (only when needed) and Metabase, shows when the rules an
 | Path | What it is |
 |---|---|
 | `START_HERE.md` | What the project is, folder map, short system prompt |
-| `docs/index.html` | Soupop Data Start page |
+| `docs/index.html` | Soupop Data Start page (double-click it) |
 | `AGENTS.md` | Instructions Codex follows in this folder, including setup |
 | `.agents/skills/` | `soupop-rules`, `metabase-question`, `metabase-dashboard` and five Soupop business skills |
 | `business-logic/` | Table meanings, metric definitions, credit research, business model and dashboard links |
@@ -44,10 +62,10 @@ The page checks the VPN (only when needed) and Metabase, shows when the rules an
 
 ## For maintainers
 
-- **Publish the start page:** on GitHub, open **Settings > Pages**, set **Source** to "Deploy from a branch", pick the branch and the `/docs` folder, and save.
-- **VPN:** set `requires_vpn` to `true` in `workspace.config.json` when Metabase moves behind the org VPN. The start page reads it from GitHub on every load and probes `vpn_probe_url`; staff can override it on their own computer. `SOUPOP_REQUIRES_VPN=1` or `0` overrides it for one `check_setup.py` run.
-- **Branch:** the start page uses `claude/workspace-v0` if it exists, otherwise `main`.
+- **VPN:** the start page passes the VPN step whenever Metabase answers. Set `requires_vpn` to `true` in `workspace.config.json` when Metabase moves behind the org VPN, so `check_setup.py` probes `vpn_probe_url` first; `SOUPOP_REQUIRES_VPN=1` or `0` overrides it for one run.
+- **Let the page test sign-ins itself (optional):** Metabase only answers pages it trusts. Opened from a file, the page has no web address Metabase can trust, so Codex does the test. If the page is ever hosted (for example on GitHub Pages), an admin can add that address in Metabase's CORS setting, and the page then checks directly.
+- **Branch:** the download link and the start page use `main`.
 - **Staff collection:** set `staff_collection_id` once the `Staff` collection exists in Metabase.
-- **Secrets:** `.env`, `.workspace-state.json`, `sql/snapshot/`, `data/` and `reports/` are git-ignored. Never commit them.
+- **Secrets:** `.env`, `soupop-metabase.env`, `.workspace-state.json`, `sql/snapshot/`, `data/` and `reports/` are git-ignored. Never commit them.
 - **Paths the start page reads from GitHub:** `workspace.config.json`, `prompts/prompt-cards.md` and `business-logic/`. Keep them where they are.
 - **Business skills:** edit them in `business-logic/company/skills/`, then copy to `.agents/skills/` (see `business-logic/company/README.md`).

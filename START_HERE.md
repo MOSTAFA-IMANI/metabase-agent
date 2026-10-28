@@ -63,7 +63,7 @@ Check every result (row count, a sanity total, the date range applied) before an
 │   ├── soupop.sql               PostgreSQL schema dump (tables and indexes, no data)
 │   └── snapshot/                live snapshot from scripts-py/fetch_schema.py (git-ignored)
 ├── docs/
-│   ├── index.html               Soupop Data Start page (GitHub Pages)
+│   ├── index.html               Soupop Data Start page (double-click it)
 │   └── metabase/                how to call the Metabase API and connect by MCP
 ├── scripts-py/              all Python: setup check, Metabase client, dashboard builders
 ├── scripts-js/              JavaScript: cash-flow workbook builder
