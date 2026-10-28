@@ -8,7 +8,7 @@ You need about 15 minutes, once.
 
 **1. Download the project**
 
-1. Click this link: [Download the Soupop data project (zip)](https://github.com/MOSTAFA-IMANI/metabase-agent/archive/refs/heads/claude/workspace-v0.zip).
+1. Click this link: [Download the Soupop data project (zip)](https://github.com/MOSTAFA-IMANI/metabase-agent/archive/refs/heads/main.zip).
 2. Open your **Downloads** folder and double-click the zip file to unzip it. (On Windows: right-click it, choose **Extract All**, then **Extract**.)
 3. Move the unzipped folder somewhere easy to find, for example **Documents**. You can rename it to `soupop-data`.
 
@@ -64,7 +64,7 @@ After that, pick an example on the page or type what you need, click **Copy for 
 
 - **VPN:** the start page passes the VPN step whenever Metabase answers. Set `requires_vpn` to `true` in `workspace.config.json` when Metabase moves behind the org VPN, so `check_setup.py` probes `vpn_probe_url` first; `SOUPOP_REQUIRES_VPN=1` or `0` overrides it for one run.
 - **Let the page test sign-ins itself (optional):** Metabase only answers pages it trusts. Opened from a file, the page has no web address Metabase can trust, so Codex does the test. If the page is ever hosted (for example on GitHub Pages), an admin can add that address in Metabase's CORS setting, and the page then checks directly.
-- **Branch:** the start page and the download link use `claude/workspace-v0`; the page falls back to `main` once that branch is gone. Update the README link after merging.
+- **Branch:** the download link and the start page use `main`.
 - **Staff collection:** set `staff_collection_id` once the `Staff` collection exists in Metabase.
 - **Secrets:** `.env`, `soupop-metabase.env`, `.workspace-state.json`, `sql/snapshot/`, `data/` and `reports/` are git-ignored. Never commit them.
 - **Paths the start page reads from GitHub:** `workspace.config.json`, `prompts/prompt-cards.md` and `business-logic/`. Keep them where they are.
