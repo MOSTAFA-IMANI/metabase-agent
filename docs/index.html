@@ -29,30 +29,40 @@
   .title { font-weight: 600; }
   .detail { color: var(--quiet); font-size: 14px; grid-column: 2; word-break: break-word; }
   .extra { grid-column: 2; margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .full { flex-basis: 100%; }
   .box { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
          display: grid; gap: 10px; }
   button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink);
            border-radius: 8px; padding: 6px 12px; cursor: pointer; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .6; cursor: wait; }
   a.button { display: inline-block; text-decoration: none; border: 1px solid var(--accent); color: var(--accent);
              border-radius: 8px; padding: 6px 12px; }
-  textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
-             background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
-  .msg { font-size: 13px; white-space: pre-wrap; }
+  input[type=text], input[type=password], textarea {
+    font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--ink); min-width: 0; }
+  textarea { resize: vertical; width: 100%; padding: 8px 10px; }
+  form.login { display: grid; gap: 8px; flex-basis: 100%; }
+  form.login .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  form.login .row input { flex: 1 1 200px; }
+  code.path { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+              font-size: 13px; word-break: break-all; }
+  .msg { font-size: 13px; white-space: pre-wrap; flex-basis: 100%; }
+  .msg:empty { display: none; }
   .msg.ok { color: var(--good); } .msg.bad { color: var(--bad); }
   .cards { display: grid; gap: 8px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
           display: flex; gap: 12px; align-items: center; justify-content: space-between; }
   .card small { color: var(--quiet); display: block; }
-  label.toggle { display: flex; gap: 8px; align-items: center; color: var(--quiet); font-size: 14px; }
-  ol.how { margin: 0; padding-left: 20px; color: var(--quiet); font-size: 14px; }
+  label.toggle { display: flex; gap: 6px; align-items: center; color: var(--quiet); font-size: 14px; }
+  ol.how { margin: 0; padding-left: 20px; color: var(--quiet); font-size: 14px; flex-basis: 100%; }
   .muted { color: var(--quiet); font-size: 13px; }
 </style>
 </head>
 <body>
 <main>
   <h1>Soupop Data Start</h1>
-  <p class="sub">Get ready to ask Codex about Soupop data. Make every step green, then tell Codex what you need.</p>
+  <p class="sub">Go through the steps from top to bottom until each one is green. Then tell Codex what you need.</p>
 
   <div id="steps"></div>
   <button id="recheck">Check again</button>
@@ -71,38 +81,38 @@
 
   <h2>Or start from an example</h2>
   <div id="cards" class="cards"></div>
-
-  <h2>Settings on this computer</h2>
-  <div class="box">
-    <label class="toggle"><input type="checkbox" id="vpn"> Metabase needs the org VPN</label>
-    <div class="muted" id="vpn-note"></div>
-  </div>
 </main>
 <script>
-// Everything this page needs comes from the GitHub repo, so a change there
-// reaches every computer on the next reload. The values below are fallbacks.
+// Settings and examples come from the GitHub repo, so a change there reaches every
+// computer on the next reload. The values below are used when GitHub can't be reached.
 const REPO = "MOSTAFA-IMANI/metabase-agent";
 const BRANCHES = ["claude/workspace-v0", "main"];  // first one that exists wins
-const FALLBACK_CONFIG = {metabase_url: "https://mt.soupop.ir", requires_vpn: false,
-                         vpn_probe_url: "https://mt.soupop.ir/api/health"};
+const FALLBACK_CONFIG = {metabase_url: "https://mt.soupop.ir", requires_vpn: false, databases: {postgres: 2, clickhouse: 3}};
 const FALLBACK_CARDS = [
   {section: "Quick answers", text: "How many confirmed invoices did we have [last week], and how does that compare with the week before?"},
   {section: "Dashboards", text: "Build a dashboard \"[Weekly sales overview]\" with confirmed sales, number of invoices, average invoice value, and a daily sales line, with a date filter."},
 ];
 const CODEX_DOWNLOAD = "https://openai.com/codex/";
+const NODE_DOWNLOAD = "https://nodejs.org/en/download";
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 const PASTE = IS_MAC ? "Cmd+V" : "Ctrl+V";
+const ENV_KEYS = ["METABASE_URL", "METABASE_API_KEY", "METABASE_USERNAME", "METABASE_PASSWORD", "METABASE_SESSION_ID"];
+const CHECK_REQUEST = "Check my Metabase connection: follow AGENTS.md, section \"Setting up\", run the setup check, " +
+  "and tell me in plain words whether I'm signed in and whether I can run SQL on each database.";
 
-// Browser storage can be blocked (private windows); the page still works, it just forgets ticks.
+// ---------- small helpers ----------
+
+// Browser storage can be blocked (private windows); the page still works, it just forgets.
 const store = {
   get(k) { try { return localStorage.getItem("soupop." + k); } catch { return null; } },
   set(k, v) { try { v === null ? localStorage.removeItem("soupop." + k) : localStorage.setItem("soupop." + k, v); } catch {} },
+  json(k) { try { return JSON.parse(this.get(k)); } catch { return null; } },
 };
 
 const el = (tag, attrs = {}, ...kids) => {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) k === "class" ? n.className = v : n.setAttribute(k, v);
-  for (const kid of kids) n.append(kid);
+  for (const kid of kids) if (kid != null) n.append(kid);
   return n;
 };
 const showMsg = (node, ok, text) => { node.textContent = text; node.className = "msg " + (ok ? "ok" : "bad"); };
@@ -114,8 +124,8 @@ async function fetchWithTimeout(url, options = {}, ms = 8000) {
   finally { clearTimeout(timer); }
 }
 
-// Metabase does not allow other sites to read its answers, but a "no-cors" request
-// still tells us whether the server answered at all, which is what reachability means.
+// Metabase does not let other pages read its answers, but a "no-cors" request still
+// tells us whether the server answered at all, which is what reachability means.
 async function reachable(url) {
   try { await fetchWithTimeout(url, {mode: "no-cors"}); return true; } catch { return false; }
 }
@@ -130,7 +140,350 @@ async function copyText(text) {
   return ok;
 }
 
+function copyButton(label, text, msg, after) {
+  const b = el("button", {}, label);
+  b.onclick = async () => {
+    const ok = await copyText(text);
+    showMsg(msg, ok, ok ? after : "Couldn't copy. Select the text and copy it yourself:\n" + text);
+  };
+  return b;
+}
+
+function timeAgo(iso) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (!isFinite(mins)) return "";
+  if (mins < 2) return "just now";
+  if (mins < 90) return `${mins} minutes ago`;
+  const h = Math.round(mins / 60);
+  return h < 36 ? `${h} hours ago` : `${Math.round(h / 24)} days ago`;
+}
+
+// The project folder this page sits in (docs/index.html inside it), when opened as a file.
+function projectPath() {
+  if (location.protocol !== "file:") return null;
+  let p = decodeURIComponent(location.pathname).replace(/\/docs\/(index\.html)?$/, "");
+  if (/^\/[A-Za-z]:/.test(p)) p = p.slice(1).replace(/\//g, "\\");  // Windows: /C:/Users/... -> C:\Users\...
+  return p;
+}
+
+// ---------- the project folder, for saving the Metabase sign-in ----------
+// Chrome and Edge let a page write into a folder the person picks. The choice is kept
+// in IndexedDB so they pick it only once; the browser may ask again to allow access.
+
+const idb = {
+  open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open("soupop-start", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("kv");
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+  },
+  async get(k) {
+    const db = await this.open();
+    return new Promise((res) => { const r = db.transaction("kv").objectStore("kv").get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(null); });
+  },
+  async set(k, v) {
+    const db = await this.open();
+    return new Promise((res) => { const t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = res; t.onerror = res; });
+  },
+};
+const CAN_PICK_FOLDER = typeof window.showDirectoryPicker === "function";
+
+async function savedFolder(ask) {
+  let handle = null;
+  try { handle = await idb.get("folder"); } catch {}
+  if (!handle) return null;
+  const opts = {mode: "readwrite"};
+  if (await handle.queryPermission(opts) === "granted") return handle;
+  if (ask && await handle.requestPermission(opts) === "granted") return handle;
+  return null;
+}
+
+async function pickFolder() {
+  const handle = await window.showDirectoryPicker({id: "soupop-project", mode: "readwrite"});
+  try { await handle.getFileHandle("workspace.config.json"); }
+  catch { throw new Error("That isn't the project folder. Pick the folder that holds the docs and scripts-py folders" + (projectPath() ? `:\n${projectPath()}` : ".")); }
+  try { await idb.set("folder", handle); } catch {}
+  return handle;
+}
+
+async function readText(dir, name) {
+  try { return await (await (await dir.getFileHandle(name)).getFile()).text(); } catch { return null; }
+}
+
+async function writeText(dir, name, text) {
+  const w = await (await dir.getFileHandle(name, {create: true})).createWritable();
+  await w.write(text); await w.close();
+}
+
+// Keep any other lines in .env; replace only the sign-in lines.
+function mergeEnv(existing, values) {
+  const kept = (existing || "").split("\n").filter(l => l.trim() && !ENV_KEYS.some(k => l.startsWith(k + "=")));
+  return [...Object.entries(values).map(([k, v]) => `${k}=${v}`), ...kept].join("\n") + "\n";
+}
+
+// ---------- Metabase sign-in ----------
+
+// Metabase answers other pages only if an admin allowed them, so this usually ends in
+// "blocked" and Codex does the check instead. When it works, it checks SQL access too.
+async function directCheck(base, creds, dbIds) {
+  try {
+    const headers = {"Content-Type": "application/json"};
+    if (creds.apiKey) headers["X-API-Key"] = creds.apiKey;
+    else {
+      const s = await fetchWithTimeout(base + "/api/session", {method: "POST", headers,
+        body: JSON.stringify({username: creds.username, password: creds.password})});
+      if (!s.ok) return {ok: false, error: "Metabase did not accept that email or password."};
+      headers["X-Metabase-Session"] = (await s.json()).id;
+    }
+    const u = await fetchWithTimeout(base + "/api/user/current", {headers});
+    if (!u.ok) return {ok: false, error: "Metabase did not accept that API key."};
+    const user = await u.json();
+    const d = await (await fetchWithTimeout(base + "/api/database", {headers})).json();
+    const dbs = Array.isArray(d) ? d : d.data || [];
+    const sql = {};
+    for (const id of dbIds) {
+      const db = dbs.find(x => x.id === id);
+      sql[id] = {name: db ? db.name : `Database ${id}`, sql: !!db && db.native_permissions === "write"};
+    }
+    return {ok: true, user: user.email || user.common_name || "API key", sql_access: sql, checked_at: new Date().toISOString()};
+  } catch {
+    return {blocked: true};
+  }
+}
+
+// Turn .workspace-state.json (written by the setup check Codex runs) into the same shape.
+function connectionFromState(text) {
+  try {
+    const s = JSON.parse(text);
+    return s.connection ? {...s.connection, from: "codex"} : null;
+  } catch { return null; }
+}
+
+function describeConnection(c) {
+  if (!c.ok) return c.error || "Not connected.";
+  const dbs = Object.values(c.sql_access || {});
+  const sql = dbs.length ? dbs.map(d => `${d.name}: ${d.sql ? "SQL allowed" : "no SQL access"}`).join(" · ") : "";
+  return `Signed in as ${c.user}. ${sql}${c.checked_at ? ` (checked ${timeAgo(c.checked_at)})` : ""}`;
+}
+
+// ---------- steps ----------
+
+function manualStep(key, title, detail, extras) {
+  const done = store.get(key) === "1";
+  const tick = el("input", {type: "checkbox"});
+  tick.checked = done;
+  tick.onchange = () => { store.set(key, tick.checked ? "1" : null); render(); };
+  return {status: done ? "ok" : "bad", title, detail,
+          extra: [...extras, el("label", {class: "toggle"}, tick, "Done")]};
+}
+
+function stepNode(s, i) {
+  const mark = s.status === "ok" ? "ok" : s.status === "bad" ? "bad" : "";
+  const node = el("div", {class: "step"},
+    el("div", {class: "dot " + mark}, s.status === "ok" ? "✓" : String(i + 1)),
+    el("div", {class: "title"}, s.title),
+    el("div", {class: "detail"}, s.detail));
+  if (s.extra && s.extra.length) node.append(el("div", {class: "extra"}, ...s.extra));
+  return node;
+}
+
+function codexStep() {
+  return manualStep("codex", "Install the Codex app",
+    "Codex is OpenAI's app (from the makers of ChatGPT). A web page can't see which apps you have, so tick Done once it's installed and you've signed in.",
+    [el("a", {class: "button", href: CODEX_DOWNLOAD, target: "_blank", rel: "noopener"}, "Download the Codex app")]);
+}
+
+function metabaseStep({config, metabaseUp}) {
+  const base = config.metabase_url.replace(/\/$/, "");
+  return {status: metabaseUp ? "ok" : "bad", title: "Reach Metabase (VPN)",
+    detail: metabaseUp
+      ? `${base} answered, so your network is fine and no VPN step is needed.`
+      : `No answer from ${base}. Turn on the org VPN (or check your internet), then click Check again.`,
+    extra: [el("a", {href: base, target: "_blank", rel: "noopener"}, "Open Metabase")]};
+}
+
+function nodeStep() {
+  const msg = el("div", {class: "msg"});
+  const s = manualStep("node", "Install Node.js",
+    "Some Codex tools need Node.js. A web page isn't allowed to run commands on your computer, so check it yourself once:",
+    [el("a", {class: "button", href: NODE_DOWNLOAD, target: "_blank", rel: "noopener"}, "Download Node.js (LTS)"),
+     copyButton("Copy the check command", "node -v", msg, "Copied. Paste it in the window from step 1 below and press Enter.")]);
+  s.extra.push(el("ol", {class: "how"},
+    el("li", {}, IS_MAC ? "Press Cmd+Space, type Terminal and press Enter." : "Press the Windows key, type cmd and press Enter."),
+    el("li", {}, `Paste node -v with ${PASTE} and press Enter.`),
+    el("li", {}, "If you see a version like v22.11.0, Node.js is installed: tick Done. If you see \"not found\" or \"not recognized\", download and install it, then check again.")), msg);
+  return s;
+}
+
+function folderStep() {
+  const path = projectPath();
+  const msg = el("div", {class: "msg"});
+  const extras = path
+    ? [el("code", {class: "path"}, path), copyButton("Copy folder path", path, msg, "Copied.")]
+    : [el("span", {class: "muted"}, "This is the folder you unzipped (the one with docs and scripts-py inside).")];
+  const s = manualStep("folder", "Add this project folder to Codex",
+    "Codex works inside a project folder. Add this one once; if it's already in your Codex project list, just tick Done.", extras);
+  s.extra.push(el("ol", {class: "how"},
+    el("li", {}, "Open the Codex app."),
+    el("li", {}, "Add a new project (or Open folder) and choose this folder" + (path ? ` (paste the path with ${PASTE} if Codex asks for it).` : ".")),
+    el("li", {}, "Keep this project selected whenever you ask about Soupop data.")), msg);
+  return s;
+}
+
+function loginStep(st) {
+  const conn = st.connection;
+  const msg = el("div", {class: "msg"});
+  if (st.loginNote) showMsg(msg, st.loginNote.ok, st.loginNote.text);
+  const refresh = el("button", {}, "Refresh");
+  refresh.onclick = async () => { st.loginNote = null; await loadConnection(true); render(); };
+  const change = el("button", {}, "Change API key or password");
+  change.onclick = () => { st.editLogin = true; st.loginNote = null; render(); };
+  const title = "Connect to Metabase";
+
+  // Connected: show who and what they can do; the form stays hidden unless they want to change it.
+  if (conn && conn.ok && !st.editLogin) {
+    const noSql = Object.values(conn.sql_access || {}).some(d => !d.sql);
+    return {status: noSql ? "bad" : "ok", title,
+      detail: describeConnection(conn) + (noSql ? " Ask a Metabase admin to give your group SQL (native query) access." : ""),
+      extra: [change, refresh, msg]};
+  }
+
+  // Saved, but the page couldn't check it itself: Codex checks it.
+  if (st.savedLogin && !conn && !st.editLogin) {
+    const askCodex = copyButton("Copy check request for Codex", CHECK_REQUEST, msg,
+      `Copied. In Codex (this project), paste with ${PASTE} and press Enter. When Codex is done, click Refresh here.`);
+    return {status: "bad", title,
+      detail: "Your sign-in is saved. Metabase doesn't let web pages test sign-ins, so Codex tests it: copy the check request, paste it into Codex, then click Refresh.",
+      extra: [askCodex, refresh, change, msg]};
+  }
+
+  // The form: the person's own Metabase email and password, or an admin API key.
+  const usePass = el("input", {type: "radio", name: "auth", value: "pass"});
+  const useKey = el("input", {type: "radio", name: "auth", value: "key"});
+  (store.get("auth") === "key" ? useKey : usePass).checked = true;
+  const keyRow = el("div", {class: "row"}, el("input", {type: "password", placeholder: "Paste the Metabase API key", autocomplete: "off", id: "api-key"}));
+  const passRow = el("div", {class: "row"},
+    el("input", {type: "text", placeholder: "Metabase email", autocomplete: "username", id: "mb-user"}),
+    el("input", {type: "password", placeholder: "Metabase password", autocomplete: "current-password", id: "mb-pass"}));
+  const sync = () => { keyRow.hidden = !useKey.checked; passRow.hidden = !usePass.checked; };
+  useKey.onchange = usePass.onchange = sync;
+  sync();
+  const save = el("button", {class: "primary"}, "Save and check");
+  const cancel = (conn || st.savedLogin) ? el("button", {type: "button"}, "Cancel") : null;
+  if (cancel) cancel.onclick = () => { st.editLogin = false; st.loginNote = null; render(); };
+  const form = el("form", {class: "login"},
+    el("div", {class: "row"},
+      el("label", {class: "toggle"}, usePass, "My Metabase email and password"),
+      el("label", {class: "toggle"}, useKey, "Admin API key")),
+    keyRow, passRow,
+    el("div", {class: "row"}, save, cancel),
+    el("div", {class: "muted"}, "Saved only in this project folder on your computer (a file called .env). It is never uploaded."));
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    save.disabled = true;
+    try { await saveLogin(st, useKey.checked, msg); }
+    finally { save.disabled = false; }
+  };
+  return {status: "bad", title,
+    detail: conn && !conn.ok ? describeConnection(conn)
+      : "Use your own Metabase email and password (your own permissions apply), or an API key from a Metabase admin. You do this once; after that this step shows whether the connection works.",
+    extra: [form, msg]};
+}
+
+async function saveLogin(st, useKey, msg) {
+  const base = st.config.metabase_url.replace(/\/$/, "");
+  const creds = useKey
+    ? {apiKey: document.getElementById("api-key").value.trim()}
+    : {username: document.getElementById("mb-user").value.trim(), password: document.getElementById("mb-pass").value};
+  if (useKey ? !creds.apiKey : !(creds.username && creds.password))
+    return showMsg(msg, false, useKey ? "Paste the API key first." : "Enter your Metabase email and password first.");
+  store.set("auth", useKey ? "key" : "pass");
+
+  const values = useKey
+    ? {METABASE_URL: base, METABASE_API_KEY: creds.apiKey}
+    : {METABASE_URL: base, METABASE_USERNAME: creds.username, METABASE_PASSWORD: creds.password};
+
+  // 1. Save into the project folder.
+  let savedNote;
+  if (CAN_PICK_FOLDER) {
+    try {
+      showMsg(msg, true, "Choose this project folder in the window that opens, then allow saving.");
+      const dir = (await savedFolder(true)) || (await pickFolder());
+      await writeText(dir, ".env", mergeEnv(await readText(dir, ".env"), values));
+      try { await dir.removeEntry("soupop-metabase.env"); } catch {}
+      savedNote = "Saved in the project folder.";
+    } catch (e) {
+      if (e && e.name === "AbortError") return showMsg(msg, false, "No folder chosen, so nothing was saved.");
+      return showMsg(msg, false, e.message || String(e));
+    }
+  } else {
+    const a = el("a", {href: URL.createObjectURL(new Blob([mergeEnv("", values)], {type: "text/plain"})), download: "soupop-metabase.env"});
+    document.body.append(a); a.click(); a.remove();
+    savedNote = "This browser can't save into folders, so it downloaded a file called soupop-metabase.env. " +
+      "Move it from your Downloads into the project folder" + (projectPath() ? ` (${projectPath()})` : "") +
+      ". Tip: Chrome or Edge saves it for you.";
+  }
+  st.savedLogin = true;
+  store.set("saved_login", "1");
+  store.set("saved_at", new Date().toISOString());  // older checks no longer count
+  store.set("connection", null);
+
+  // 2. Check the connection.
+  showMsg(msg, true, savedNote + " Checking Metabase…");
+  const result = await directCheck(base, creds, Object.values(st.config.databases || {}));
+  st.editLogin = false;
+  if (result.blocked) {
+    st.connection = null;
+    st.loginNote = {ok: true, text: savedNote};
+  } else {
+    st.connection = result;
+    st.loginNote = null;
+    if (result.ok) store.set("connection", JSON.stringify(result));
+    else st.editLogin = true;
+  }
+  render();
+}
+
+async function loadConnection(ask) {
+  // The setup check Codex runs writes .workspace-state.json; it's the most recent truth.
+  const dir = await savedFolder(ask).catch(() => null);
+  const fromCodex = dir ? connectionFromState(await readText(dir, ".workspace-state.json")) : null;
+  if (dir) {
+    const env = (await readText(dir, ".env")) || "";
+    state.savedLogin = /^METABASE_(API_KEY|PASSWORD)=./m.test(env) || !!(await readText(dir, "soupop-metabase.env"));
+  } else state.savedLogin = state.savedLogin || store.get("saved_login") === "1";
+  const fromPage = store.json("connection");
+  const t = (c) => Date.parse(c.checked_at) || 0;
+  const savedAt = Date.parse(store.get("saved_at")) || 0;
+  const newest = [fromCodex, fromPage].filter(c => c && t(c) >= savedAt).sort((a, b) => t(b) - t(a))[0];
+  state.connection = newest || null;
+  if (newest) store.set("connection", JSON.stringify(newest));
+}
+
+function updatesStep({online, update}) {
+  const zip = `https://github.com/${REPO}/archive/refs/heads/${BRANCH}.zip`;
+  return online
+    ? {status: "ok", title: "Latest rules and business docs",
+       detail: update ? `Last changed ${timeAgo(update.date)}: ${update.message}. If that's newer than your copy, download it again and replace this folder (keep your .env file).` : "Available on GitHub.",
+       extra: [el("a", {href: zip}, "Download the latest copy"),
+               el("a", {href: `https://github.com/${REPO}/tree/${BRANCH}/business-logic`, target: "_blank", rel: "noopener"}, "Read the business docs")]}
+    : {status: "skip", title: "Latest rules and business docs", detail: "Can't reach GitHub right now, so updates can't be checked."};
+}
+
+// ---------- page ----------
+
+let state = null;
 let BRANCH = BRANCHES[0];
+
+function render() {
+  if (!state) return;
+  const steps = [codexStep(), metabaseStep(state), nodeStep(), folderStep(), loginStep(state), updatesStep(state)];
+  const box = document.getElementById("steps");
+  box.textContent = "";
+  steps.forEach((s, i) => box.append(stepNode(s, i)));
+}
+
 async function loadRepo() {
   for (const branch of BRANCHES) {
     try {
@@ -146,109 +499,18 @@ async function lastUpdate() {
     const res = await fetchWithTimeout(`https://api.github.com/repos/${REPO}/commits/${encodeURIComponent(BRANCH)}`);
     if (!res.ok) return null;
     const c = await res.json();
-    return {date: new Date(c.commit.committer.date), message: c.commit.message.split("\n")[0]};
+    return {date: c.commit.committer.date, message: c.commit.message.split("\n")[0]};
   } catch { return null; }
-}
-
-function daysAgo(date) {
-  const d = Math.floor((Date.now() - date.getTime()) / 86400000);
-  return d <= 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
-}
-
-function setupRequest(repoUrl) {
-  return [
-    "Set up this folder as the Soupop data workspace:",
-    `1. If this folder is empty, get ${repoUrl} (branch ${BRANCH}) into it: use git clone if git is installed, otherwise download the branch zip from GitHub and unzip it here. If it is already a clone, run git pull.`,
-    "2. Then follow AGENTS.md, section \"Setting up\": run the setup check, connect Metabase in my Codex settings, and tell me in plain words what is ready and what I still need to do.",
-  ].join("\n");
-}
-
-// A step a browser cannot check by itself: the person ticks it, and the tick is remembered.
-function manualStep(key, title, detail, extras) {
-  const done = store.get(key) === "1";
-  const tick = el("input", {type: "checkbox"});
-  tick.checked = done;
-  tick.onchange = () => { store.set(key, tick.checked ? "1" : null); render(); };
-  return {status: done ? "ok" : "bad", title, detail,
-          extra: [...extras, el("label", {class: "toggle"}, tick, "Done")]};
-}
-
-let state = null;
-
-function stepNode(s) {
-  const mark = s.status === "ok" ? "ok" : s.status === "bad" ? "bad" : "";
-  const node = el("div", {class: "step"},
-    el("div", {class: "dot " + mark}, s.status === "ok" ? "✓" : s.status === "bad" ? "!" : "–"),
-    el("div", {class: "title"}, s.title),
-    el("div", {class: "detail"}, s.detail));
-  if (s.extra && s.extra.length) node.append(el("div", {class: "extra"}, ...s.extra));
-  return node;
-}
-
-function render() {
-  if (!state) return;
-  const {config, online, metabaseUp, vpnUp, needsVpn, update} = state;
-  const base = config.metabase_url.replace(/\/$/, "");
-  const repoUrl = `https://github.com/${REPO}`;
-  const steps = [];
-
-  steps.push(needsVpn
-    ? {status: vpnUp ? "ok" : "bad", title: "Org VPN",
-       detail: vpnUp ? "Connected to the internal network." : "Can't reach the internal network. Turn on the org VPN, then click Check again."}
-    : {status: "skip", title: "Org VPN", detail: "Not needed right now."});
-
-  steps.push({status: metabaseUp ? "ok" : "bad", title: "Reach Metabase",
-    detail: metabaseUp ? `${base} answered.` : `No answer from ${base}. Check your internet${needsVpn ? " and VPN" : ""}, then click Check again.`,
-    extra: [el("a", {href: base, target: "_blank", rel: "noopener"}, "Open Metabase and sign in once")]});
-
-  steps.push(online
-    ? {status: "ok", title: "Latest rules and business docs",
-       detail: update ? `Updated ${daysAgo(update.date)}: ${update.message}. Codex gets them when it updates your folder.` : "Available on GitHub.",
-       extra: [el("a", {href: `${repoUrl}/tree/${BRANCH}/business-logic`, target: "_blank", rel: "noopener"}, "Read the business docs")]}
-    : {status: "bad", title: "Latest rules and business docs", detail: "Can't reach GitHub, so this page shows saved examples. Check your internet."});
-
-  steps.push(manualStep("codex", "Install the Codex app",
-    "A web page can't see which apps are installed. Install the Codex app, sign in to your OpenAI account, then tick Done.",
-    [el("a", {class: "button", href: CODEX_DOWNLOAD, target: "_blank", rel: "noopener"}, "Download the Codex app")]));
-
-  const copySetup = el("button", {class: "primary"}, "Copy setup request");
-  const setupMsg = el("div", {class: "msg"});
-  copySetup.onclick = async () => {
-    const ok = await copyText(setupRequest(repoUrl));
-    showMsg(setupMsg, ok, ok ? `Copied. Paste it into Codex with ${PASTE} and press Enter.` : "Couldn't copy. Select the text below and copy it yourself.");
-    if (!ok) setupMsg.after(el("textarea", {rows: "5", readonly: ""}, setupRequest(repoUrl)));
-  };
-  const setup = manualStep("workspace", "Set up your Soupop folder in Codex",
-    "Codex does the setup for you: it downloads the workspace, connects Metabase and checks everything.", [copySetup]);
-  setup.extra.push(el("ol", {class: "how", style: "flex-basis:100%"},
-    el("li", {}, "Make a new empty folder called soupop-data (in Documents is fine)."),
-    el("li", {}, "In the Codex app, open that folder as your project."),
-    el("li", {}, `Click Copy setup request, paste it into Codex with ${PASTE}, and press Enter. Approve when Codex asks.`),
-    el("li", {}, "When Codex asks you to sign in to Metabase, use your own Metabase account.")), setupMsg);
-  steps.push(setup);
-
-  const box = document.getElementById("steps");
-  box.textContent = "";
-  for (const s of steps) box.append(stepNode(s));
 }
 
 async function check() {
   document.getElementById("steps").textContent = "Checking…";
   const {config, online} = await loadRepo();
-  const override = store.get("requires_vpn");
-  const needsVpn = override === null ? !!config.requires_vpn : override === "1";
   const base = config.metabase_url.replace(/\/$/, "");
-  const [vpnUp, metabaseUp, update] = await Promise.all([
-    needsVpn ? reachable(config.vpn_probe_url || base + "/api/health") : Promise.resolve(null),
-    reachable(base + "/api/health"),
-    online ? lastUpdate() : Promise.resolve(null),
-  ]);
-  state = {config, online, metabaseUp, vpnUp, needsVpn, update};
+  const [metabaseUp, update] = await Promise.all([reachable(base + "/api/health"), online ? lastUpdate() : null]);
+  state = {...(state || {}), config, online, metabaseUp, update};
+  await loadConnection(false);
   render();
-  const vpn = document.getElementById("vpn");
-  vpn.checked = needsVpn;
-  document.getElementById("vpn-note").textContent =
-    `Team setting: ${config.requires_vpn ? "VPN needed" : "no VPN needed"}.` + (override === null ? "" : " You changed it on this computer.");
   if (online) loadCards(); else showCards(FALLBACK_CARDS);
 }
 
@@ -296,15 +558,10 @@ document.getElementById("intent-copy").onclick = async () => {
   if (/\.\.\.|\[[^\]]*\]/.test(text)) return showMsg(msg, false, "Replace the ... or [ ] parts with your own details first.");
   const ok = await copyText(text);
   showMsg(msg, ok, ok
-    ? `Copied. Switch to the Codex app, open your soupop-data project, paste with ${PASTE} and press Enter.`
+    ? `Copied. Switch to the Codex app, pick this project, paste with ${PASTE} and press Enter.`
     : "Couldn't copy. Select the text above and copy it yourself.");
 };
 document.getElementById("recheck").onclick = check;
-document.getElementById("vpn").onchange = (e) => {
-  const team = state ? !!state.config.requires_vpn : false;
-  store.set("requires_vpn", e.target.checked === team ? null : (e.target.checked ? "1" : "0"));
-  check();
-};
 check();
 </script>
 </body>

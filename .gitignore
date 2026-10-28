@@ -1,4 +1,5 @@
 .env
+soupop-metabase.env
 .workspace-state.json
 schema/
 sql/snapshot/

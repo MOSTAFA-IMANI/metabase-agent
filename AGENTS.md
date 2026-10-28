@@ -6,14 +6,15 @@ You are helping a Soupop staff member answer data questions and build saved ques
 
 ## Setting up
 
-Staff start from the Soupop Data Start page (`docs/index.html`), which hands you a setup request. When the person asks you to set up or update this workspace:
+Staff download this folder as a zip, unzip it, open `docs/index.html` (the Soupop Data Start page) and add the folder to Codex as a project. The page saves their Metabase sign-in in this folder: `.env` (or `soupop-metabase.env` from browsers that can't write files), with either `METABASE_API_KEY` or `METABASE_USERNAME` and `METABASE_PASSWORD`.
 
-1. **Get the latest files.** If this folder is a git clone, run `git pull --ff-only`. If it was unzipped (no `.git`), download the branch zip from GitHub again and replace the files, keeping `.env` and `.workspace-state.json`.
-2. **Check.** Run `python3 scripts-py/check_setup.py` (on Windows, `python` or `py`). It records the mode in `.workspace-state.json`.
-3. **Connect Metabase (mcp mode).** If the person's Codex config (`~/.codex/config.toml`, on Windows `%USERPROFILE%\.codex\config.toml`) has no `[mcp_servers.metabase]` section, add the block from `codex/config.toml.example` with `url` set to `mcp_url` from `.workspace-state.json`. Ask before writing, since the file is outside this folder. Then tell the person to quit and reopen the Codex app, and to sign in with their own Metabase account when Codex asks.
-4. **Report** in plain words: what is ready, and the one next thing they need to do, if any. Never tell them to install anything with npm or the Terminal; if the Codex app itself is missing, point them to https://openai.com/codex/.
+When the person asks you to check their Metabase connection, or to set up this workspace:
 
-At the start of a new chat, run `git pull --ff-only` once if this is a git clone, so the rules are current. If it fails, carry on and mention it once.
+1. **Check.** Run `python3 scripts-py/check_setup.py` (on Windows, `python` or `py`). With saved sign-in details it uses API mode, signs in, and checks SQL (native query) access on each database. It writes everything to `.workspace-state.json`, which the start page reads to show the connection.
+2. **No saved sign-in, Metabase 62 or newer (mcp mode).** If the person's Codex config (`~/.codex/config.toml`, on Windows `%USERPROFILE%\.codex\config.toml`) has no `[mcp_servers.metabase]` section, offer to add the block from `codex/config.toml.example` with `url` set to `mcp_url` from `.workspace-state.json`. Ask before writing, since the file is outside this folder. Then tell them to quit and reopen the Codex app and sign in when asked. The simpler path is to save a sign-in on the start page.
+3. **Report** in plain words: signed in or not, and which databases allow SQL. For a wrong key or password, send them back to the start page (Connect to Metabase, Change). For missing SQL access, tell them to ask a Metabase admin to give their group native query access. If the Codex app itself is missing, point them to https://openai.com/codex/.
+
+Updates: if this folder is a git clone, run `git pull --ff-only` once at the start of a new chat. If it was unzipped (no `.git`), tell the person the start page shows when the rules last changed and has a "Download the latest copy" link; they replace the folder and keep `.env`.
 
 ## Before the first query
 
@@ -23,10 +24,10 @@ At the start of a new chat, run `git pull --ff-only` once if this is a git clone
 
 ## Connection modes
 
-- **`mcp`** (Metabase 62 or newer): use the `metabase` MCP server tools for search, metadata, SQL and saving. The person signed in with their own Metabase account, so their permissions apply.
-- **`api`** (older Metabase): use `scripts-py/metabase_agent.py` from the workspace root. It reads `.env`, which holds the person's own session from `python3 scripts-py/metabase_agent.py login` (username and password), or an admin's API key. Never print, copy or commit `.env`.
+- **`mcp`** (Metabase 62 or newer and no saved sign-in): use the `metabase` MCP server tools for search, metadata, SQL and saving. The person signed in with their own Metabase account, so their permissions apply.
+- **`api`** (sign-in saved from the start page, or Metabase older than 62): use `scripts-py/metabase_agent.py` from the workspace root. It reads `.env` and `soupop-metabase.env`: an admin's API key, or the person's own username and password. With a username and password it signs in by itself and signs in again when the session expires. Never print, copy or commit `.env` or `soupop-metabase.env`, and never show their contents.
 
-If a call returns 401, the session has expired: ask the person to run `python3 scripts-py/metabase_agent.py login` (api mode) or, in mcp mode, to sign in again when Codex asks (quit and reopen Codex if it doesn't ask). Never ask them to paste a password or key into the chat.
+If a call still returns 401, the saved key or password is wrong or changed: ask the person to enter it again on the start page (Connect to Metabase, Change), or in mcp mode to sign in again when Codex asks. Never ask them to paste a password or key into the chat.
 
 ## Databases
 
