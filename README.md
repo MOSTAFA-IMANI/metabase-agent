@@ -2,7 +2,24 @@
 
 Open this folder in the Codex app to ask data questions and build Metabase questions and dashboards at `https://mt.soupop.ir`. Codex reads `AGENTS.md`, the skills in `.agents/skills/` and the business rules in `business-logic/`, so you can ask in plain words. Agents and new maintainers: start with [`START_HERE.md`](START_HERE.md).
 
-## Start here (Mac or Windows)
+## Start here on Windows
+
+1. Download [SoupopSetup.exe](https://github.com/MOSTAFA-IMANI/metabase-agent/releases/latest/download/SoupopSetup.exe).
+2. Double-click it. Windows may show "Windows protected your PC": click **More info**, then **Run anyway**. (The app isn't signed with a paid certificate yet.)
+3. Answer its questions. Press Enter to accept the suggestion in [brackets].
+
+Soupop Setup does all of this for you:
+
+1. Downloads this project into `Documents\soupop-data`, or updates it, keeping your sign-in.
+2. Checks Metabase answers. If it doesn't, it tells you to turn on the VPN.
+3. Finds the Codex app, or opens its download page.
+4. Checks Node.js and Python and installs them if they're missing. Windows may ask for permission.
+5. Asks for your Metabase email and password, or an admin API key. It tests them and shows whether you can run SQL, then saves them in the project folder.
+6. Copies the folder path, opens Codex so you can add the folder as a project, and opens the start page.
+
+Run it again any time to check everything or to update the project.
+
+## Start here on Mac (or Windows without the app)
 
 You need about 15 minutes, once.
 
@@ -47,6 +64,7 @@ After that, pick an example on the page or type what you need, click **Copy for 
 |---|---|
 | `START_HERE.md` | What the project is, folder map, short system prompt |
 | `docs/index.html` | Soupop Data Start page (double-click it) |
+| `windows/SoupopSetup/` | Soupop Setup for Windows (C# source; GitHub Actions builds the .exe) |
 | `AGENTS.md` | Instructions Codex follows in this folder, including setup |
 | `.agents/skills/` | `soupop-rules`, `metabase-question`, `metabase-dashboard` and five Soupop business skills |
 | `business-logic/` | Table meanings, metric definitions, credit research, business model and dashboard links |
@@ -65,6 +83,7 @@ After that, pick an example on the page or type what you need, click **Copy for 
 - **VPN:** the start page passes the VPN step whenever Metabase answers. Set `requires_vpn` to `true` in `workspace.config.json` when Metabase moves behind the org VPN, so `check_setup.py` probes `vpn_probe_url` first; `SOUPOP_REQUIRES_VPN=1` or `0` overrides it for one run.
 - **Let the page test sign-ins itself (optional):** Metabase only answers pages it trusts. Opened from a file, the page has no web address Metabase can trust, so Codex does the test. If the page is ever hosted (for example on GitHub Pages), an admin can add that address in Metabase's CORS setting, and the page then checks directly.
 - **Branch:** the download link and the start page use `main`.
+- **Windows app:** every change under `windows/` is built and smoke-tested on a Windows machine by GitHub Actions (download it from the workflow run). To publish it for staff, push a tag such as `setup-v1.0.0`; that creates a GitHub Release with `SoupopSetup.exe`, which the README link and the start page use. Never commit the .exe itself.
 - **Staff collection:** set `staff_collection_id` once the `Staff` collection exists in Metabase.
 - **Secrets:** `.env`, `soupop-metabase.env`, `.workspace-state.json`, `sql/snapshot/`, `data/` and `reports/` are git-ignored. Never commit them.
 - **Paths the start page reads from GitHub:** `workspace.config.json`, `prompts/prompt-cards.md` and `business-logic/`. Keep them where they are.

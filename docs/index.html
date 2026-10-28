@@ -64,6 +64,7 @@
   <h1>Soupop Data Start</h1>
   <p class="sub">Go through the steps from top to bottom until each one is green. Then tell Codex what you need.</p>
 
+  <div id="windows-app"></div>
   <div id="steps"></div>
   <button id="recheck">Check again</button>
 
@@ -95,7 +96,9 @@ const FALLBACK_CARDS = [
 const CODEX_DOWNLOAD = "https://openai.com/codex/";
 const NODE_DOWNLOAD = "https://nodejs.org/en/download";
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const IS_WINDOWS = /Win/.test(navigator.platform || navigator.userAgent);
 const PASTE = IS_MAC ? "Cmd+V" : "Ctrl+V";
+const SETUP_EXE = `https://github.com/${REPO}/releases/latest/download/SoupopSetup.exe`;
 const ENV_KEYS = ["METABASE_URL", "METABASE_API_KEY", "METABASE_USERNAME", "METABASE_PASSWORD", "METABASE_SESSION_ID"];
 const CHECK_REQUEST = "Check my Metabase connection: follow AGENTS.md, section \"Setting up\", run the setup check, " +
   "and tell me in plain words whether I'm signed in and whether I can run SQL on each database.";
@@ -308,7 +311,9 @@ function nodeStep() {
   const s = manualStep("node", "Install Node.js",
     "Some Codex tools need Node.js. A web page isn't allowed to run commands on your computer, so check it yourself once:",
     [el("a", {class: "button", href: NODE_DOWNLOAD, target: "_blank", rel: "noopener"}, "Download Node.js (LTS)"),
-     copyButton("Copy the check command", "node -v", msg, "Copied. Paste it in the window from step 1 below and press Enter.")]);
+     copyButton("Copy the check command", "node -v", msg, "Copied. Paste it in the window from step 1 below and press Enter."),
+     IS_WINDOWS ? copyButton("Copy the install command", "winget install -e --id OpenJS.NodeJS.LTS", msg,
+       "Copied. Paste it in the window from step 1 below and press Enter; it installs Node.js for you. Then open a new window and check again.") : null].filter(Boolean));
   s.extra.push(el("ol", {class: "how"},
     el("li", {}, IS_MAC ? "Press Cmd+Space, type Terminal and press Enter." : "Press the Windows key, type cmd and press Enter."),
     el("li", {}, `Paste node -v with ${PASTE} and press Enter.`),
@@ -503,6 +508,25 @@ async function lastUpdate() {
   } catch { return null; }
 }
 
+// On Windows, Soupop Setup (SoupopSetup.exe) does the checks and installs this page can't.
+// The banner shows only once a release with the .exe exists.
+async function showWindowsApp() {
+  if (!IS_WINDOWS) return;
+  try {
+    const res = await fetchWithTimeout(`https://api.github.com/repos/${REPO}/releases/latest`);
+    if (!res.ok) return;
+    const rel = await res.json();
+    if (!(rel.assets || []).some(a => a.name === "SoupopSetup.exe")) return;
+  } catch { return; }
+  const box = document.getElementById("windows-app");
+  box.className = "box";
+  box.style.marginBottom = "16px";
+  box.append(
+    el("div", {class: "title"}, "On Windows? Let Soupop Setup do it for you"),
+    el("div", {class: "muted"}, "It downloads this project, checks Metabase, finds the Codex app, installs Node.js and Python if they're missing, saves and tests your Metabase sign-in, and opens Codex. Windows may say it protected your PC: click More info, then Run anyway."),
+    el("div", {}, el("a", {class: "button", href: SETUP_EXE}, "Download SoupopSetup.exe")));
+}
+
 async function check() {
   document.getElementById("steps").textContent = "Checking…";
   const {config, online} = await loadRepo();
@@ -562,6 +586,7 @@ document.getElementById("intent-copy").onclick = async () => {
     : "Couldn't copy. Select the text above and copy it yourself.");
 };
 document.getElementById("recheck").onclick = check;
+showWindowsApp();
 check();
 </script>
 </body>
