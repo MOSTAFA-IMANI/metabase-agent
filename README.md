@@ -2,13 +2,15 @@
 
 Open this folder in the Codex app to ask data questions and build Metabase questions and dashboards at `https://mt.soupop.ir`. Codex reads `AGENTS.md`, the skills in `.agents/skills/` and the business rules in `business-logic/`, so you can ask in plain words. Agents and new maintainers: start with [`START_HERE.md`](START_HERE.md).
 
-## Start here on Windows
+## Start here on Windows: Soupop Setup wizard
 
-1. Download [SoupopSetup.exe](https://github.com/MOSTAFA-IMANI/metabase-agent/releases/latest/download/SoupopSetup.exe).
+**[⬇ Download the Soupop Setup wizard for Windows (SoupopSetup.exe)](https://github.com/MOSTAFA-IMANI/metabase-agent/releases/latest/download/SoupopSetup.exe)**
+
+1. Download SoupopSetup.exe with the link above.
 2. Double-click it. Windows may show "Windows protected your PC": click **More info**, then **Run anyway**. (The app isn't signed with a paid certificate yet.)
 3. Answer its questions. Press Enter to accept the suggestion in [brackets].
 
-Soupop Setup does all of this for you:
+The wizard does all of this for you:
 
 1. Downloads this project into `Documents\soupop-data`, or updates it, keeping your sign-in.
 2. Checks Metabase answers. If it doesn't, it tells you to turn on the VPN.
