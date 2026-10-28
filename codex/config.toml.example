@@ -1,5 +1,5 @@
 # Add this to ~/.codex/config.toml (Windows: %USERPROFILE%\.codex\config.toml), only
-# when tools/check_setup.py reports MCP mode (Metabase 62 or newer). Codex does
+# when scripts-py/check_setup.py reports MCP mode (Metabase 62 or newer). Codex does
 # this during setup (AGENTS.md, "Setting up"), and asks you to sign in with your
 # own Metabase account the first time.
 #

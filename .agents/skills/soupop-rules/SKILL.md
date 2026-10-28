@@ -29,4 +29,4 @@ Apply all of these to every query. When a rule and a request conflict, say so an
 7. Chatbot: `app_events` with `name = 'ai_chat_bot'` are events, not chats. Report them separately from `chatbot_chats`.
 8. SQL dialects differ: PostgreSQL `count(*)`, ClickHouse `count()`; ClickHouse maps use `extra['key']`.
 
-For anything deeper, read the domain guide under `business-logic/` that matches the question.
+For anything deeper, read the domain guide under `business-logic/` that matches the question. For what the business is and how it makes money (customers, vendors, commission), load the `soupop-business-overview` skill or the matching `soupop-*` business skill.

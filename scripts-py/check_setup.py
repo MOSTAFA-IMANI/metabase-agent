@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib import error, request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from metabase_agent import load_env  # noqa: E402
+from metabase_agent import MetabaseClient, load_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = ROOT / "workspace.config.json"
@@ -59,28 +59,65 @@ def codex_has_metabase():
         return False
 
 
+def has_credentials(env):
+    return bool(env.get("METABASE_API_KEY") or env.get("METABASE_SESSION_ID")
+                or (env.get("METABASE_USERNAME") and env.get("METABASE_PASSWORD")))
+
+
+def check_connection(config, state, add):
+    """Sign in with the saved key or username and password, and check SQL access."""
+    client = MetabaseClient(base_url=state["metabase_url"])
+    conn = {"ok": False, "auth": "api_key" if client.api_key else "password",
+            "checked_at": state["checked_at"]}
+    state["connection"] = conn
+    try:
+        user = client.call("GET", "/api/user/current")
+    except SystemExit as exc:
+        msg = str(exc)
+        conn["error"] = ("Metabase did not accept the saved API key or password; enter it again on the start page."
+                         if "HTTP 401" in msg or "HTTP 400" in msg else msg.splitlines()[0])
+        add("Metabase sign-in", False, conn["error"])
+        return
+    conn.update(ok=True, user=user.get("email") or user.get("common_name") or "API key")
+    add("Metabase sign-in", True, f"signed in as {conn['user']}")
+
+    # SQL questions need native query access ("write") on each database.
+    try:
+        dbs = client.list_databases()
+    except SystemExit as exc:
+        add("SQL access", False, f"couldn't list databases: {str(exc).splitlines()[0]}")
+        return
+    dbs = dbs.get("data", []) if isinstance(dbs, dict) else dbs
+    by_id = {db.get("id"): db for db in dbs}
+    access = {}
+    for name, db_id in config.get("databases", {}).items():
+        db = by_id.get(db_id)
+        access[str(db_id)] = {"name": (db or {}).get("name", name), "visible": db is not None,
+                              "sql": (db or {}).get("native_permissions") == "write"}
+    conn["sql_access"] = access
+    missing = [f"{a['name']} ({i})" for i, a in access.items() if not a["sql"]]
+    add("SQL access", not missing,
+        "can run SQL on every database" if not missing else
+        "no SQL access to " + ", ".join(missing) + "; ask a Metabase admin to give your group native query access")
+
+
 def check_metabase(config, base, state, add):
-    # 3. Version decides MCP or API mode.
+    # 3. Version. Saved credentials (start page) mean API mode; otherwise MCP when Metabase supports it.
     _, props = get(base + "/api/session/properties")
     tag = (props or {}).get("version", {}).get("tag") if isinstance(props, dict) else None
     major = major_version(tag)
-    mode = "mcp" if major is not None and major >= config.get("mcp_min_major_version", 62) else "api"
+    supports_mcp = major is not None and major >= config.get("mcp_min_major_version", 62)
+    saved = has_credentials(load_env())
+    mode = "api" if saved or not supports_mcp else "mcp"
     state.update({"metabase_version": tag, "mode": mode})
     add("Metabase version", tag is not None, f"{tag or 'unknown'}: using {mode.upper()} mode")
 
     # 4. Sign-in.
     if mode == "api":
-        env = load_env()
-        headers = {}
-        if env.get("METABASE_SESSION_ID"):
-            headers["X-Metabase-Session"] = env["METABASE_SESSION_ID"]
-        if env.get("METABASE_API_KEY"):
-            headers["X-API-Key"] = env["METABASE_API_KEY"]
-        status, user = get(base + "/api/user/current", headers) if headers else (None, None)
-        if status == 200 and isinstance(user, dict):
-            add("Metabase sign-in", True, f"signed in as {user.get('email', 'unknown')}")
+        if saved:
+            check_connection(config, state, add)
         else:
-            add("Metabase sign-in", False, "not signed in; use the form below or run: python3 tools/metabase_agent.py login")
+            add("Metabase sign-in", False, "not signed in; save an API key or your username and password on the start page")
     else:
         state["mcp_url"] = find_mcp_url(config, base)
         if codex_has_metabase():

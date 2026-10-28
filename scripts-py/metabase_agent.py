@@ -8,17 +8,22 @@ from pathlib import Path
 from urllib import error, request
 
 
-# The workspace root holds .env; this file lives in tools/.
+# The workspace root holds .env; this file lives in scripts-py/.
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = ROOT / ".env"
+# The start page saves sign-in details here when the browser can't write .env itself
+# (Safari, Firefox); it wins over .env so a new sign-in always takes effect.
+PAGE_ENV_FILE = ROOT / "soupop-metabase.env"
 DEFAULT_URL = "https://mt.soupop.ir"
 
 
 def load_env():
     # Environment variables (e.g. cloud environment secrets) are the fallback; .env wins.
     values = {k: v for k, v in os.environ.items() if k.startswith("METABASE_")}
-    if ENV_FILE.exists():
-        for line in ENV_FILE.read_text().splitlines():
+    for path in (ENV_FILE, PAGE_ENV_FILE):
+        if not path.exists():
+            continue
+        for line in path.read_text().splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -50,8 +55,19 @@ class MetabaseClient:
         self.base_url = (base_url or env.get("METABASE_URL") or DEFAULT_URL).rstrip("/")
         self.api_key = api_key or env.get("METABASE_API_KEY")
         self.session_id = session_id or env.get("METABASE_SESSION_ID")
+        # Saved by the start page; used to sign in again when the session expires.
+        self.username = env.get("METABASE_USERNAME")
+        self.password = env.get("METABASE_PASSWORD")
 
-    def call(self, method, path, body=None, auth=True):
+    def can_relogin(self):
+        return bool(self.username and self.password and not self.api_key)
+
+    def relogin(self):
+        save_env({"METABASE_SESSION_ID": self.login(self.username, self.password)})
+
+    def call(self, method, path, body=None, auth=True, retry=True):
+        if auth and not self.api_key and not self.session_id and self.can_relogin():
+            self.relogin()
         data = None
         headers = {"Content-Type": "application/json"}
         if auth and self.api_key:
@@ -66,6 +82,9 @@ class MetabaseClient:
                 raw = resp.read().decode("utf-8")
                 return json.loads(raw) if raw else {}
         except error.HTTPError as exc:
+            if exc.code == 401 and auth and retry and self.can_relogin():
+                self.relogin()
+                return self.call(method, path, body, auth, retry=False)
             detail = exc.read().decode("utf-8", errors="replace")
             raise SystemExit(f"Metabase HTTP {exc.code} for {method} {path}:\n{detail}") from exc
         except error.URLError as exc:

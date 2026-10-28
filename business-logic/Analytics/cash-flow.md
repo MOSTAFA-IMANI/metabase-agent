@@ -56,4 +56,4 @@ The collection curve is trained on `number > 1`, so it does not estimate invoice
 - An explicit forecast assumption is not observed cash. Read the `Assumptions` sheet before quoting any forecast output.
 - To refresh, inspect the source queries and update the `AS_OF` cutoff and forecast periods together. The output path and formulas are in the linked builder scripts; do not treat the inspected `.ndjson` file as a workbook source.
 
-Sources: [fetch_cashflow_data.py](../../fetch_cashflow_data.py), [build_cashflow_projection.mjs](../../build_cashflow_projection.mjs), [workbook](../../Soupop%20BNPL%20Cash%20Flow%20Projection.xlsx).
+Sources: [fetch_cashflow_data.py](../../scripts-py/fetch_cashflow_data.py) writes `data/soupop_cashflow_source.json`; [build_cashflow_projection.mjs](../../scripts-js/build_cashflow_projection.mjs) reads it and writes the workbook to `reports/Soupop BNPL Cash Flow Projection.xlsx` (kept out of git; a copy is in the project's shared folder).

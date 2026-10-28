@@ -61,5 +61,5 @@ The existing dashboard includes chat text and recent traces. Use aggregate cards
 
 ## Repository implementation
 
-- `build_ai_chatbot_analytics_dashboard.py` creates questions and a new dashboard. It is not an update script.
-- `add_ai_chatbot_source_analytics.py` is the idempotent updater for dashboard 37. It reads the dashboard first and preserves existing cards and filter mappings.
+- `scripts-py/build_ai_chatbot_analytics_dashboard.py` creates questions and a new dashboard. It is not an update script.
+- `scripts-py/add_ai_chatbot_source_analytics.py` is the idempotent updater for dashboard 37. It reads the dashboard first and preserves existing cards and filter mappings.
